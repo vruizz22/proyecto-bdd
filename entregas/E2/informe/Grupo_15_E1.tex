@@ -41,7 +41,7 @@
 
 % Cambiar por nombre completo + número de alumno
 \newcommand{\alumno}{Matias Araos, Vicente Rivas, Victor Ruiz - Grupo 15}
-\rhead{Entrega 1 - \alumno}
+\rhead{Entrega 2 - \alumno}
 
 \begin{document}
 \thispagestyle{empty}
@@ -62,7 +62,7 @@ IIC2413 - Bases de Datos \\}
 % Titulo
 \begin{center}
 \vspace{0.5cm}
-{\huge\bf Entrega 1}\\
+{\huge\bf Entrega 2}\\
 \vspace{0.2cm}
 \today\\
 \vspace{0.2cm}
@@ -156,20 +156,19 @@ Un curso puede estar en varias ofertas académicas, y en una oferta académica h
 \subsection*{Persona \textgreater \; Estudiante // Académico // Administrativo}
 Persona es una superclase, cuyos atributos (RUN, DV, Nombres, Correo, Teléfono) son compartidos por todas las personas, a todos los miembros de la comunidad que derivan de Persona, en este caso: Estudiante, Académico y Administrativo, que poseen atributos propios que no comparten necesariamente con los otros. 
 \section*{Esquema Relacional}
-\textit{Curso}(\underline{Sigla Curso}: string, \underline{Sección}: int, Nombre: string, Nivel: string, Equivalencias: string, Tipo/Carácter (OFG, CTI, OPR, etc): string)\\\\
-\textit{Carrera}(\underline{Nombre Carrera}: string)\\\\
-\textit{Nota}(Nota: float, \underline{Descripción (partial key)}: string, \underline{Curso.Sigla Curso}: string, \underline{Curso.Sección}: int, \underline{Estudiante.Número de estudiante}: int,
-Calificación: string, Resultado: string)\\\\
-\textit{Prerrequisito}(\underline{Curso.Sigla Curso}: string, \underline{Curso.Sección}: int, \underline{Ciclo}: int, \underline{Curso Restricción}: string)\\\\
-\textbf{Nota:} El atributo 'Curso Restricción' es un string que separa por comas cada curso prerrequisito, ejemplo: 'Curso1,Curso2,Curso3'.\\\\
-\textit{Historial Académico}(\underline{Estudiante.Número de estudiante}: int, \underline{Curso.Sigla Curso}: string, \underline{Curso.Sección}: int, \underline{Última Carga}: string, \underline{Último Logro}: string, Oferta Académica.Periodo Oferta: string)\\\\
-\textit{Estudiante}(\underline{Número de estudiante}: int, Bloqueo: bool, Cohorte: string)\\\\
-\textit{Oferta Académica}(\underline{Periodo Oferta}: string, Módulo Horario: int, Sala: string, Vacantes: int)\\\\
-\textit{Planes de Estudio}(\underline{Código Plan}: string, Fecha de Inicio: string)\\\\
-\textit{Académico}(\underline{Persona.RUT}, \underline{Contrato}: string, Jerarquía: string, Jornada: string, Grado: string)\\\\
-\textit{Administrativo}(\underline{Persona.RUT}: int, \underline{Cargo}: string, Grado Académico: string)\\\\
-% RUN;DV;Nombres;Apellido Paterno;Apellido Materno;Nombre Completo;Número estudiante;Mail Personal;Mail Institucional
-\textit{Persona}(\underline{RUT}: int, DV: int, Nombres: string, Apellido Paterno: string, Apellido Materno: string, Nombre Completo: string, Mail Personal: string, Mail Institucional: string)
+\textit{Persona}(\underline{RUT}: int, \underline{DV}: int, Nombres: string, Apellido\_Paterno: string, Apellido\_Materno: string, Nombre\_Completo: string, Mail\_Personal: string, Mail\_Institucional: string, Teléfono: string) \\\\
+\textit{Estudiante}(\underline{Persona.RUT}: int, \underline{Persona.DV}: int, \underline{Número\_de\_Estudiante}: int, Carrera: string, Cohorte: string, Estado: string, Bloqueo: bool) \\\\
+\textit{Académico}(\underline{Persona.RUT}: int, \underline{Persona.DV}: int, Contrato: string, Jerarquía: string, Jornada: string, Grado\_Académico: string) \\\\
+\textit{Administrativo}(\underline{Persona.RUT}: int, \underline{Persona.DV}: int, Cargo: string, Grado\_Académico: string) \\\\
+\textit{Curso}(\underline{Sigla\_Curso}: string, \underline{Sección}: int, Nombre: string, Nivel: string, Tipo/Carácter (OFG, CTI, OPR, etc.): string, Ciclo: int, Departamento.Código\_Departamento: string) \\\\
+\textit{Cursos\_Equivalencias}(\underline{Curso.Sigla\_Curso}: string, \underline{Curso.Sección}: int, Sigla\_Equivalente: string, Ciclo: int) \\\\
+\textit{Cursos\_Prerequisitos}(\underline{Curso.Sigla\_Curso}: string, \underline{Curso.Sección}: int, Sigla\_Prerequisito: string, Ciclo: int) \\\\
+\textit{Cursos\_Minimos}(\underline{Curso.Sigla\_Curso}: string, \underline{Curso.Sección}: int, Curso\_Minimo: string, Ciclo: int) \\\\
+\textit{Planes\_Estudio}(\underline{Código\_Plan}: string, Nombre: string, Facultad: string, Nivel: string, Modalidad: string, Fecha\_Inicio: string) \\\\
+\textit{Programacion\_Academica}(\underline{Curso.Sigla\_Curso}: string, \underline{Curso.Sección}: int, Periodo: string, Sala: string, Horario: string, Vacantes: int) \\\\
+\textit{Departamento}(\underline{Código\_Departamento}: string, Nombre: string, Facultad: string) \\\\
+\textit{Nota}(\underline{Curso.Sigla\_Curso}: string, \underline{Curso.Sección}: int, \underline{Estudiante.Número\_de\_Estudiante}: int, Ciclo: int, Nota: float, Descripción: string, Calificación: string, Resultado: string) \\\\
+\textit{Avance\_Academico}(\underline{Estudiante.Número\_de\_Estudiante}: int, \underline{Curso.Sigla\_Curso}: string, \underline{Curso.Sección}: int, Última\_Carga: string, Último\_Logro: string)
 
 \subsection*{Restriciones de Integridad y Dominios}
 % Aca avismaos con un diclaimer que si en el dominio exite nulo entonces adimete nulo si no, se asueme que no admite nulo, lo ponemos en mayuscula para que se note
@@ -215,10 +214,6 @@ Se intenta no complicarse más de la cuenta, y esto se ve en la poca redundancia
 A través de una buena etapa de diseño, fue posible identificar llaves candidatas \textit{natural keys} que luego fueron convertidas a llaves primarias, buscando que fueran únicas y poco redundantes. Por ejemplo, casos como el de la llave primaria de la entidad
 'Persona', RUN, es una muy buena elección, ya que esta debiese ser única para cada persona, y dado que esa entidad funciona como una superclase para las demás, es fácilmente utilizable por las entidades Persona, Académico o Administrativo. La misma lógica sigue para las llaves de las entidades 
 'Estudiante' y 'Curso', respectivamente: Número de Estudiante y Sigla Curso, junto a Sección, forman llaves particularmente fuertes, permitiendo diferenciar e identificar a cada estudiante, así como los cursos de estos. Además, son llaves generalmente minimalistas, que no incluyen atributos innecesarios que podrían complicar el sistema a futuro, y también son bastante estables, ya que no se alteran mucho con el tiempo; por ejemplo, el RUN debiese ser siempre el mismo.
-
-
-
-
 
 % Fin del documento
 \end{document}
