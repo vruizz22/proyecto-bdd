@@ -2,8 +2,7 @@
 class Cargador
 {
     public $conn;
-    public $tablas; # Array de tablas en formato de string
-
+    public $tablas; # Array de tablas en formato de string # mini edit
     public function __construct($env_string)
     {
         // Inicializar conexión
