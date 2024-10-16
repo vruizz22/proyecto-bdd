@@ -21,6 +21,47 @@ class Corrector
         $this->InsertarDatosTemporales();
     }
 
+
+    public function CorregirDepto(){
+        $query = "INSERT INTO Departamento (Nombre, Codigo, Nombre_Facultad) VALUES (
+            'X', 'X', 'X' -- Se insertan valores desconocidos para que los Cursos no pierdan datos, solo una vez.
+        );
+        ";
+        $this->InsertarDatosFinales($query, 'Departamento');
+
+    }
+    public function CorregirCursos(){
+        $query = "INSERT INTO Cursos (Sigla_curso, Seccion_curso, Periodo_curso, Nombre, Nivel, Ciclo, Tipo, Oportunidad, Duracion, Nombre_Departamento, Codigo_Departamento, RUN_Academico, DV_Academico, Nombre_Academico, Apellido1_Academico, Apellido2_Academico, Principal)
+            SELECT DISTINCT
+                COALESCE(TempAsignaturas.Asignatura_id, TempNotas.Codigo_Asignatura) AS Sigla_curso,
+                COALESCE(TempPlaneacion.Seccion, 0) AS Seccion_curso,
+                COALESCE(TempPlaneacion.Periodo, 'X') AS Periodo_curso,
+                TempAsignaturas.Asignatura AS Nombre,
+                TempAsignaturas.Nivel AS Nivel,
+                TempAsignaturas.Ciclo AS Ciclo,
+                '' AS Tipo, -- Valor desconocido.
+                TempNotas.Convocatoria AS Oportunidad,
+                COALESCE(TempPlaneacion.Duracion, 'X') AS Duracion,
+                COALESCE(TempPlaneacion.Departamento, 'X') AS Nombre_Departamento,
+                COALESCE(TempPlaneacion.Codigo_Depto, 'X') AS Codigo_Departamento,
+                TempDocentesPlanificados.RUN AS RUN_Academico,
+                COALESCE(TempEstudiantes.DV, TempNotas.DV, 'X') AS DV,
+                TempDocentesPlanificados.Nombre AS Nombre_Academico,
+                COALESCE(TempDocentesPlanificados.Apellido_P, TempPlaneacion.Apellido_Docente_1) AS Apellido1_Academico,
+                TempPlaneacion.Apellido_Docente_2 AS Apellido2_Academico,
+                TempPlaneacion.Profesor_Principal AS Principal
+            FROM
+                TempAsignaturas
+            JOIN TempPlaneacion ON TempAsignaturas.Asignatura_id = TempPlaneacion.Id_Asignatura -- Se descartan cursos no vigentes
+            FULL OUTER JOIN TempNotas ON TempAsignaturas.Asignatura_id = TempNotas.Codigo_Asignatura
+            LEFT JOIN TempDocentesPlanificados ON TempPlaneacion.RUN = TempDocentesPlanificados.RUN
+            LEFT JOIN TempEstudiantes ON TempDocentesPlanificados.RUN = TempEstudiantes.RUN       
+            ON CONFLICT (Sigla_curso, Seccion_curso, Periodo_curso) DO NOTHING -- Evitar duplicados 
+        ";
+        $this->InsertarDatosFinales($query, 'Cursos');
+
+    }
+
     public function CorregirNotas()
     {
         // Insertar datos en la tabla Nota

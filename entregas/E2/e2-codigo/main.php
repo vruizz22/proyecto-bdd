@@ -4,7 +4,7 @@ require_once 'Cargador.php';
 require_once 'Corrector.php';
 
 // Cadena de conexión
-$env_string = "host=localhost port=5432 dbname=postgres user=postgres password=Elefante$15"; # Ceniza11 clave visho
+$env_string = "host=localhost port=5432 dbname=postgres user=postgres password=Ceniza11"; # Ceniza11 clave visho
 
 // Llamada al módulo Cargador
 // $cargador = new Cargador($env_string);
@@ -14,5 +14,7 @@ $env_string = "host=localhost port=5432 dbname=postgres user=postgres password=E
 // Llamada al módulo Corrector
 $corrector = new Corrector($env_string);
 $corrector->InitTablas();
+$corrector->CorregirDepto();
+$corrector->CorregirCursos();
 $corrector->CorregirNotas();
 $corrector->closeConn();
