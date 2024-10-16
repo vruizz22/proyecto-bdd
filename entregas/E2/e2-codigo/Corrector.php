@@ -2,11 +2,8 @@
 class Corrector
 {
     public $conn;
-    public $data_dir;
-    public $asignaturas_file;
-    public $docentes_file;
-    public $estudiantes_file;
-    public $errores_generales;
+
+    public $ruta_datos; 
 
     public function __construct($env_string)
     {
@@ -19,26 +16,32 @@ class Corrector
                 pg_last_error());
         }
 
-        // La verdad no estoy muy seguro si esta ruta sea la correcta xdddd pero es la que sale en Filezilla
-        $this->data_dir = '/home/grupo15/Sites/data';
+        $nombre_archivos = array(
+            'Asignaturas',
+            'Docentes_planificados',
+            'Estudiantes',
+            'Notas',
+            'Planeacion',
+            'Planes',
+            'Prerequisitos',
+            'Planes_Magia',
+            'Planes_Hechiceria',
+            'Malla_Hechiceria',
+            'Malla_Magia'
+        );
 
-        //Archivos a corregir: 
-        //y guardar los datos erroneos en otro .csv (Idealmente creo yo deberiamos guardar todos los datos 
-        //errados en un mismo .csv para no tener que hacer 10 nuevos .csv)
-
-        $this->asignaturas_file = $this->data_dir . '/Asignaturas.csv';
-        $this->docentes_file = $this->data_dir . '/Docentes_planificados.csv';
-        $this->estudiantes_file = $this->data_dir . '/estudiantes.csv';
-
-
-        // Archivo para registrar todos los errores
-        $this->errores_generales = $this->data_dir . '/errores.csv';
-
-        // Inicializar el archivo de errores y lo vaciamos si ya existe 
-        file_put_contents($this->errores_generales, '');
+        $ruta_base = __DIR__ . DIRECTORY_SEPARATOR . 'data';
+        $this->ruta_datos = array_map(function ($nombre) use ($ruta_base) {
+            return $ruta_base . DIRECTORY_SEPARATOR . $nombre . '.csv';
+        }, $nombre_archivos);
     }
     // Función para registrar errores en un archivo CSV único
 
+
+    public function InitTablas(){
+        $this->CrearTablasTemporales();
+        $this->InsertarDatosTemporales();
+    }
     public function CorregirNotas(){
 
         // Insertar datos en la tabla Nota
@@ -61,18 +64,6 @@ class Corrector
         ";
         $this->InsertarDatosFinales($query, 'Nota');
     
-    }
-
-    private function registrarError($datos, $mensaje, $archivo_origen)
-    {
-        $fp = fopen($this->errores_generales, 'a');
-        if ($fp) {
-            // Agregar el mensaje de error y el archivo de origen al final de los datos
-            $datos[] = $mensaje;
-            $datos[] = $archivo_origen;
-            fputcsv($fp, $datos);
-            fclose($fp);
-        }
     }
 
     //Función para validar RUN
@@ -115,7 +106,7 @@ class Corrector
 
 
 
-    private function closeConn()
+    public function closeConn()
     {
         // Cerrar la conexión a la base de datos
         pg_close($this->conn);
@@ -270,9 +261,9 @@ class Corrector
         }
     }
 
-    private function InsertarDatosTemporales($datos)
+    private function InsertarDatosTemporales()
     {
-        foreach ($datos['Asignaturas'] as $asignatura) {
+        foreach ($this->ruta_datos['Asignaturas'] as $asignatura) {
             $query = "INSERT INTO TempAsignaturas (Plan, Asignatura_id, Asignatura, Nivel, Ciclo) VALUES (
                 '{$asignatura[0]}',  -- Plan
                 '{$asignatura[1]}',  -- Asignatura_id
@@ -286,7 +277,7 @@ class Corrector
             }
         }
 
-        foreach ($datos['Planeacion'] as $planeacion) {
+        foreach ($this->ruta_datos['Planeacion'] as $planeacion) {
             $fechaInicio = DateTime::createFromFormat('d/m/y', $planeacion[15])->format('Y-m-d');
             $fechaFin = DateTime::createFromFormat('d/m/y', $planeacion[16])->format('Y-m-d');
 
@@ -323,7 +314,7 @@ class Corrector
             }
         }
 
-        foreach ($datos['Docentes_planificados'] as $docente) {
+        foreach ($this->ruta_datos['Docentes_planificados'] as $docente) {
             $query = "INSERT INTO TempDocentesPlanificados (RUN, Nombre, Apellido_P, Telefono, Email_personal, Email_institucional, Dedicacion, Contrato, Diurno, Vespertino, Sede, Carrera, Grado_academico, Jerarquia, Cargo, Estamento) VALUES (
                 " . (is_numeric($docente[0]) ? $docente[0] : "NULL") . ",  -- RUN
                 '{$docente[1]}',  -- Nombre
@@ -348,7 +339,7 @@ class Corrector
             }
         }
 
-        foreach ($datos['Estudiantes'] as $estudiante) {
+        foreach ($this->ruta_datos['Estudiantes'] as $estudiante) {
             // Escapar cadenas con pg_escape_string
             $segundoApellido = pg_escape_string($this->conn, $estudiante[11]);
             $primeraApellido = pg_escape_string($this->conn, $estudiante[10]);
@@ -376,7 +367,7 @@ class Corrector
             }
         }
 
-        foreach ($datos['Notas'] as $nota) {
+        foreach ($this->ruta_datos['Notas'] as $nota) {
             // Escapar cadenas con pg_escape_string
             $Apellido_Materno = pg_escape_string($this->conn, $nota[8]);
             $Apellido_Paterno = pg_escape_string($this->conn, $nota[7]);
@@ -404,7 +395,7 @@ class Corrector
             }
         }
 
-        foreach ($datos['Planes'] as $plan) {
+        foreach ($this->ruta_datos['Planes'] as $plan) {
             $iniciovigencia = DateTime::createFromFormat('d/m/y', $plan[8])->format('Y-m-d');
             $query = "INSERT INTO TempPlanes (Codigo_Plan, Facultad, Carrera, Plan, Jornada, Sede, Grado, Modalidad, Inicio_Vigencia) VALUES (
                 '{$plan[0]}',  -- Codigo_Plan
@@ -423,7 +414,7 @@ class Corrector
             }
         }
 
-        foreach ($datos['Prerequisitos'] as $prerequisito) {
+        foreach ($this->ruta_datos['Prerequisitos'] as $prerequisito) {
             $query = "INSERT INTO TempPrerequisitos (Plan, Asignatura_id, Asignatura, Nivel, Prerequisitos, Prerequisitos_1) VALUES (
                 '{$prerequisito[0]}',  -- Plan
                 '{$prerequisito[1]}',  -- Asignatura_id
@@ -438,7 +429,7 @@ class Corrector
             }
         }
 
-        foreach ($datos['Planes_Magia'] as $planMagia) {
+        foreach ($this->ruta_datos['Planes_Magia'] as $planMagia) {
             $query = "INSERT INTO TempPlanesMagia (Planes_Vigentes) VALUES (
                 '{$planMagia[0]}'  -- Planes_Vigentes
             )";
@@ -448,7 +439,7 @@ class Corrector
             }
         }
 
-        foreach ($datos['Planes_Hechiceria'] as $planHechiceria) {
+        foreach ($this->ruta_datos['Planes_Hechiceria'] as $planHechiceria) {
             $query = "INSERT INTO TempPlanesHechiceria (Planes_Vigentes) VALUES (
                 '{$planHechiceria[0]}'  -- Planes_Vigentes
             )";
@@ -458,7 +449,7 @@ class Corrector
             }
         }
 
-        foreach ($datos['Malla_Magia'] as $mallaMagia) {
+        foreach ($this->ruta_datos['Malla_Magia'] as $mallaMagia) {
             $query = "INSERT INTO TempMallaMagia (Col1, Col2, Col3, Col4, Col5, Col6, Col7, Col8, Col9, Col10) VALUES (
                 '{$mallaMagia[0]}',  -- Col1
                 '{$mallaMagia[1]}',  -- Col2
@@ -477,7 +468,7 @@ class Corrector
             }
         }
 
-        foreach ($datos['Malla_Hechiceria'] as $mallaHechiceria) {
+        foreach ($this->ruta_datos['Malla_Hechiceria'] as $mallaHechiceria) {
             $query = "INSERT INTO TempMallaHechiceria (Col1, Col2, Col3, Col4, Col5, Col6, Col7, Col8, Col9, Col10) VALUES (
                 '{$mallaHechiceria[0]}',  -- Col1
                 '{$mallaHechiceria[1]}',  -- Col2
