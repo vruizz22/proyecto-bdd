@@ -37,7 +37,7 @@ class Corrector
             SELECT DISTINCT
                 COALESCE(TempAsignaturas.Asignatura_id, TempNotas.Codigo_Asignatura) AS Sigla_curso, -- En caso de haber cursos que no estén en TempAsignaturas
                 0 AS Seccion_curso, -- se agregan solo cursos viejos, sin sección determinada
-                TempNotas.Periodo_Asignatura AS Periodo_curso,
+                COALESCE(TempNotas.Periodo_Asignatura, 'X')  AS Periodo_curso,
                 COALESCE(TempAsignaturas.Asignatura, TempNotas.Asignatura) AS Nombre, -- En caso de haber cursos que no estén en TempAsignaturas
                 TempAsignaturas.Nivel AS Nivel,
                 TempAsignaturas.Ciclo AS Ciclo,
@@ -45,8 +45,8 @@ class Corrector
                 TempNotas.Convocatoria AS Oportunidad,
                 -- Se desconoce toda la información de los cursos antiguos sobre los docentes
                 '' AS Duracion,
-                '' AS Nombre_Departamento,
-                '' AS Codigo_Departamento,
+                'X' AS Nombre_Departamento,
+                'X' AS Codigo_Departamento,
                 '' AS RUN_Academico,
                 '' AS DV, 
                 '' AS Nombre_Academico,
@@ -68,8 +68,8 @@ class Corrector
             SELECT DISTINCT
                 COALESCE(TempAsignaturas.Asignatura_id, TempNotas.Codigo_Asignatura) AS Sigla_curso,
                 0 AS Seccion_curso, -- seccion no considerada pues no se conocen periodos antiguos
-                COALESCE(TempAsignaturas.Asignatura, TempNotas.Asignatura) AS Periodo_curso,
-                TempNotas.Numero_de_alumno AS Numero_de_estudiante,
+                COALESCE(TempAsignaturas.Asignatura, TempNotas.Asignatura, 'X') AS Periodo_curso,
+                COALESCE(TempNotas.Numero_de_alumno, 'X') AS Numero_de_estudiante,
                 TempNotas.RUN AS RUN,
                 TempNotas.DV AS DV,
                 TempNotas.Nota AS Nota,
