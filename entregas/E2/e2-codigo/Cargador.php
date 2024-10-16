@@ -2,7 +2,8 @@
 class Cargador
 {
     public $conn;
-    public $tablas; # Array de tablas en formato de string # mini edit # mini edit 2
+    public $tablas; # Array de tablas en formato de string 
+
     public function __construct($env_string)
     {
         // Inicializar conexión
@@ -100,16 +101,16 @@ class Cargador
             Ciclo varchar(100),
             Tipo varchar(100),
             Oportunidad varchar(3),
-            Duración varchar(1) NOT NULL,
+            Duracion varchar(1) NOT NULL,
             Nombre_Departamento varchar(100) NOT NULL,
-            Código_Departamento varchar(100) NOT NULL,
+            Codigo_Departamento varchar(100) NOT NULL,
             RUN_Academico varchar(100),
             DV_Academico varchar(2),
             Nombre_Academico varchar(100) DEFAULT 'POR DESIGNAR',
             Apellido1_Academico varchar(100),
             Apellido2_Academico varchar(100),
             Principal varchar(1),
-            FOREIGN KEY (Nombre_Departamento, Código_Departamento) REFERENCES Departamento(Nombre, Código),
+            FOREIGN KEY (Nombre_Departamento, Codigo_Departamento) REFERENCES Departamento(Nombre, Codigo),
             PRIMARY KEY (Sigla_curso, Seccion_curso, Periodo_curso)
         )";
 
@@ -147,7 +148,7 @@ class Cargador
         )";
 
         $Planes_Estudio = "CREATE TABLE Planes_Estudio(
-            Código_Plan varchar(100) PRIMARY KEY UNIQUE NOT NULL,
+            Codigo_Plan varchar(100) PRIMARY KEY UNIQUE NOT NULL,
             Inicio_Vigencia DATE NOT NULL,
             Jornada varchar(100) NOT NULL,
             Modalidad varchar(100) NOT NULL,
@@ -175,9 +176,9 @@ class Cargador
 
         $Departamento = "CREATE TABLE Departamento(
             Nombre varchar(100) NOT NULL,
-            Código varchar(100) NOT NULL,
+            Codigo varchar(100) NOT NULL,
             Nombre_Facultad varchar(100) NOT NULL,
-            PRIMARY KEY (Nombre, Código)
+            PRIMARY KEY (Nombre, Codigo)
         )";
 
         $Nota = "CREATE TABLE Nota(
@@ -188,9 +189,9 @@ class Cargador
             RUN varchar(100) NOT NULL,
             DV varchar(2) NOT NULL,
             Nota float,
-            Descripción varchar(100),
+            Descripcion varchar(100),
             Resultado varchar(100),
-            Calificación varchar(100),
+            Calificacion varchar(100),
             PRIMARY KEY (Sigla_curso, Seccion_curso, Periodo_curso, RUN, DV, Numero_de_estudiante),
             FOREIGN KEY (Sigla_curso, Seccion_curso, Periodo_curso) REFERENCES Cursos(Sigla_curso, Seccion_curso, Periodo_curso),
             FOREIGN KEY (RUN, DV, Numero_de_estudiante) REFERENCES Estudiantes(RUN, DV, Numero_de_estudiante)
@@ -205,11 +206,12 @@ class Cargador
             Numero_de_estudiante int NOT NULL,
             Periodo_Oferta varchar(100) NOT NULL,
             Nota float,
-            Descripción varchar(100),
+            Descripcion varchar(100),
             Resultado varchar(100),
-            Calificación varchar(100),
+            Calificacion varchar(100),
             Ultima_Carga varchar(100),
             Ultimo_Logro varchar(100),
+            Fecha_logro varchar(100),
             PRIMARY KEY (Sigla_curso, Seccion_curso, Periodo_curso, RUN, DV, Numero_de_estudiante),
             FOREIGN KEY (Sigla_curso, Seccion_curso, Periodo_curso) REFERENCES Cursos(Sigla_curso, Seccion_curso, Periodo_curso),
             FOREIGN KEY (RUN, DV, Numero_de_estudiante) REFERENCES Estudiantes(RUN, DV, Numero_de_estudiante)
@@ -376,18 +378,18 @@ class Cargador
         $this->InsertarDatosFinales($query, 'Administrativos');
 
         // Insertar datos en la tabla Departamento
-        $query = "INSERT INTO Departamento (Nombre, Código, Nombre_Facultad)
+        $query = "INSERT INTO Departamento (Nombre, Codigo, Nombre_Facultad)
             SELECT DISTINCT
                 TempPlaneacion.Departamento AS Nombre,
-                TempPlaneacion.Codigo_Depto AS Código,
+                TempPlaneacion.Codigo_Depto AS Codigo,
                 TempPlaneacion.Facultad AS Nombre_Facultad
             FROM TempPlaneacion
-            ON CONFLICT (Nombre, Código) DO NOTHING -- Evitar duplicados
+            ON CONFLICT (Nombre, Codigo) DO NOTHING -- Evitar duplicados
         ";
         $this->InsertarDatosFinales($query, 'Departamento');
 
         // Insertar datos en la tabla Cursos
-        $query = "INSERT INTO Cursos (Sigla_curso, Seccion_curso, Periodo_curso, Nombre, Nivel, Ciclo, Tipo, Oportunidad, Duración, Nombre_Departamento, Código_Departamento, RUN_Academico, DV_Academico, Nombre_Academico, Apellido1_Academico, Apellido2_Academico, Principal)
+        $query = "INSERT INTO Cursos (Sigla_curso, Seccion_curso, Periodo_curso, Nombre, Nivel, Ciclo, Tipo, Oportunidad, Duracion, Nombre_Departamento, Codigo_Departamento, RUN_Academico, DV_Academico, Nombre_Academico, Apellido1_Academico, Apellido2_Academico, Principal)
             SELECT DISTINCT
                 TempAsignaturas.Asignatura_id AS Sigla_curso,
                 TempPlaneacion.Seccion AS Seccion_curso,
@@ -397,9 +399,9 @@ class Cargador
                 TempAsignaturas.Ciclo AS Ciclo,
                 '' AS Tipo, -- Valor desconocido.
                 TempNotas.Convocatoria AS Oportunidad,
-                TempPlaneacion.Duracion AS Duración,
+                TempPlaneacion.Duracion AS Duracion,
                 TempPlaneacion.Departamento AS Nombre_Departamento,
-                TempPlaneacion.Codigo_Depto AS Código_Departamento,
+                TempPlaneacion.Codigo_Depto AS Codigo_Departamento,
                 TempDocentesPlanificados.RUN AS RUN_Academico,
                 COALESCE(TempEstudiantes.DV, TempNotas.DV, 'X') AS DV,
                 TempDocentesPlanificados.Nombre AS Nombre_Academico,
@@ -428,7 +430,7 @@ class Cargador
             FROM
                 TempAsignaturas A1
             JOIN TempAsignaturas A2 
-                -- Extraemos el código de asignatura eliminando el plan
+                -- Extraemos el codigo de asignatura eliminando el plan
                 ON SUBSTRING(A1.Asignatura_id, LENGTH(A1.Plan) + 1) = SUBSTRING(A2.Asignatura_id, LENGTH(A2.Plan) + 1)
                 -- Nos aseguramos que los planes sean distintos
                 AND A1.Plan != A2.Plan
@@ -474,9 +476,9 @@ class Cargador
         $this->InsertarDatosFinales($query, 'Cursos_Minimos');
 
         // Insertar datos en la tabla Planes_Estudio
-        $query = "INSERT INTO Planes_Estudio (Código_Plan, Inicio_Vigencia, Jornada, Modalidad, Sede, Plan, Nombre_Facultad, Grado, Nombre_Carrera)
+        $query = "INSERT INTO Planes_Estudio (Codigo_Plan, Inicio_Vigencia, Jornada, Modalidad, Sede, Plan, Nombre_Facultad, Grado, Nombre_Carrera)
             SELECT DISTINCT
-                TempPlanes.Codigo_Plan AS Código_Plan,
+                TempPlanes.Codigo_Plan AS Codigo_Plan,
                 TempPlanes.Inicio_Vigencia AS Inicio_Vigencia,
                 TempPlanes.Jornada AS Jornada,
                 TempPlanes.Modalidad AS Modalidad,
@@ -486,7 +488,7 @@ class Cargador
                 TempPlanes.Grado AS Grado,
                 TempPlanes.Carrera AS Nombre_Carrera
             FROM TempPlanes
-            ON CONFLICT (Código_Plan) DO NOTHING -- Evitar duplicados
+            ON CONFLICT (Codigo_Plan) DO NOTHING -- Evitar duplicados
         ";
         $this->InsertarDatosFinales($query, 'Planes_Estudio');
 
@@ -511,7 +513,7 @@ class Cargador
         $this->InsertarDatosFinales($query, 'Programacion_Academica');
 
         // Insertar datos en la tabla Nota
-        $query = "INSERT INTO Nota (Sigla_curso, Seccion_curso, Periodo_curso, Numero_de_estudiante, RUN, DV, Nota, Descripción, Resultado, Calificación)
+        $query = "INSERT INTO Nota (Sigla_curso, Seccion_curso, Periodo_curso, Numero_de_estudiante, RUN, DV, Nota, Descripcion, Resultado, Calificacion)
             SELECT DISTINCT
                 TempAsignaturas.Asignatura_id AS Sigla_curso,
                 TempPlaneacion.Seccion AS Seccion_curso,
@@ -520,9 +522,9 @@ class Cargador
                 TempNotas.RUN AS RUN,
                 TempNotas.DV AS DV,
                 TempNotas.Nota AS Nota,
-                '' AS Descripción, -- Valor a agregar con la función actualizar_nota
+                '' AS Descripcion, -- Valor a agregar con la función actualizar_nota
                 '' AS Resultado, -- Valor a agregar con la función actualizar_nota
-                TempNotas.Calificacion AS Calificación
+                TempNotas.Calificacion AS Calificacion
             FROM
                 TempAsignaturas
             JOIN TempPlaneacion ON TempAsignaturas.Asignatura_id = TempPlaneacion.Id_Asignatura 
@@ -533,7 +535,7 @@ class Cargador
         $this->InsertarDatosFinales($query, 'Nota');
 
         // Insertar datos en la tabla Avance_Academico
-        $query = "INSERT INTO Avance_Academico (Sigla_curso, Seccion_curso, Periodo_curso, RUN, DV, Numero_de_estudiante, Periodo_Oferta, Nota, Descripción, Resultado, Calificación, Ultima_Carga, Ultimo_Logro)
+        $query = "INSERT INTO Avance_Academico (Sigla_curso, Seccion_curso, Periodo_curso, RUN, DV, Numero_de_estudiante, Periodo_Oferta, Nota, Descripcion, Resultado, Calificacion, Ultima_Carga, Ultimo_Logro, Fecha_logro)
             SELECT DISTINCT
                 TempAsignaturas.Asignatura_id AS Sigla_curso,
                 TempPlaneacion.Seccion AS Seccion_curso,
@@ -543,11 +545,12 @@ class Cargador
                 TempNotas.Numero_de_alumno AS Numero_de_estudiante,
                 TempNotas.Periodo_Asignatura AS Periodo_Oferta,
                 TempNotas.Nota AS Nota,
-                '' AS Descripción, -- Valor a agregar con la función actualizar_nota
+                '' AS Descripcion, -- Valor a agregar con la función actualizar_nota
                 '' AS Resultado, -- Valor a agregar con la función actualizar_nota
-                TempNotas.Calificacion AS Calificación,
+                TempNotas.Calificacion AS Calificacion,
                 TempEstudiantes.Ultima_Carga AS Ultima_Carga,
-                TempEstudiantes.Logro AS Ultimo_Logro
+                TempEstudiantes.Logro AS Ultimo_Logro,
+                TempEstudiantes.Fecha_Logro AS Fecha_logro
             FROM
                 TempAsignaturas
             JOIN TempPlaneacion ON TempAsignaturas.Asignatura_id = TempPlaneacion.Id_Asignatura
@@ -616,8 +619,8 @@ class Cargador
                 Primer_Apellido VARCHAR(100),
                 Segundo_Apellido VARCHAR(100),
                 Logro VARCHAR(100),
-                Fecha_Logro DATE,
-                Ultima_Carga DATE
+                Fecha_Logro VARCHAR(100), -- Periodo (2024-2)
+                Ultima_Carga VARCHAR(100) -- Periodo (2024-2)
             )",
             "CREATE TEMP TABLE TempNotas (
                 Codigo_Plan VARCHAR(100),
@@ -792,21 +795,6 @@ class Cargador
         }
 
         foreach ($datos['Estudiantes'] as $estudiante) {
-            $fechalogro = DateTime::createFromFormat('Y-m', $estudiante[13]);
-            $fechaultimacarga = !empty($estudiante[14]) ? DateTime::createFromFormat('Y-m', $estudiante[14]) : null;
-
-            if ($fechalogro) {
-                $fechalogro = $fechalogro->format('Y-m-01'); // Primer día del mes
-            } else {
-                die("Error en la conversión de fechas: Fecha_Logro '{$estudiante[13]}'");
-            }
-
-            if ($fechaultimacarga) {
-                $fechaultimacarga = $fechaultimacarga->format('Y-m-01'); // Primer día del mes
-            } else {
-                $fechaultimacarga = 'NULL'; // Establecer como NULL si está vacío
-            }
-
             // Escapar cadenas con pg_escape_string
             $segundoApellido = pg_escape_string($this->conn, $estudiante[11]);
             $primeraApellido = pg_escape_string($this->conn, $estudiante[10]);
@@ -825,8 +813,8 @@ class Cargador
                 '{$primeraApellido}', -- Primer_Apellido
                 '{$segundoApellido}', -- Segundo_Apellido
                 '{$estudiante[12]}', -- Logro
-                '{$fechalogro}',     -- Fecha_Logro
-                " . ($fechaultimacarga !== 'NULL' ? "'$fechaultimacarga'" : 'NULL') . " -- Ultima_Carga
+                '{$estudiante[13]}', -- Fecha_Logro
+                '{$estudiante[14]}'  -- Ultima_Carga
             )";
             $result = pg_query($this->conn, $query);
             if (!$result) {
@@ -1008,7 +996,7 @@ class Cargador
         RETURNS TRIGGER AS $$
         BEGIN
             IF NEW.RUN_Academico IS NULL THEN
-                NEW.RUN_Academico = NEW.Código_Departamento;
+                NEW.RUN_Academico = NEW.Codigo_Departamento;
             END IF;
             RETURN NEW;
         END;
@@ -1034,42 +1022,42 @@ class Cargador
         $funcion_actualizar_nota = "CREATE OR REPLACE FUNCTION actualizar_nota()
         RETURNS TRIGGER AS $$
         BEGIN
-            IF NEW.Calificación IS NULL THEN
+            IF NEW.Calificacion IS NULL OR New.Nota IS NULL THEN
                 NEW.Resultado := 'Curso Vigente en el período académico';
-                NEW.Descripción := 'curso vigente';
-            ELSIF NEW.Calificación = 'P' THEN
+                NEW.Descripcion := 'curso vigente';
+            ELSIF NEW.Calificacion = 'P' THEN
                 NEW.Resultado := 'Nota Pendiente';
-                NEW.Descripción := 'Curso incompleto';
-            ELSIF NEW.Calificación = 'NP' THEN
+                NEW.Descripcion := 'Curso incompleto';
+            ELSIF NEW.Calificacion = 'NP' THEN
                 NEW.Resultado := 'No se Presenta';
-                NEW.Descripción := 'Reprobatorio';
-            ELSIF NEW.Calificación = 'EX' THEN
+                NEW.Descripcion := 'Reprobatorio';
+            ELSIF NEW.Calificacion = 'EX' THEN
                 NEW.Resultado := 'Eximido';
-                NEW.Descripción := 'Aprobatorio';
-            ELSIF NEW.Calificación = 'A' THEN
+                NEW.Descripcion := 'Aprobatorio';
+            ELSIF NEW.Calificacion = 'A' THEN
                 NEW.Resultado := 'Aprobado';
-                NEW.Descripción := 'Aprobatorio';
-            ELSIF NEW.Calificación = 'R' THEN
+                NEW.Descripcion := 'Aprobatorio';
+            ELSIF NEW.Calificacion = 'R' THEN
                 NEW.Resultado := 'Reprobado';
-                NEW.Descripción := 'Reprobatorio';
-            ELSIF NEW.Calificación = 'SO' THEN
+                NEW.Descripcion := 'Reprobatorio';
+            ELSIF NEW.Calificacion = 'SO' THEN
                 NEW.Resultado := 'Sobresaliente';
-                NEW.Descripción := 'Aprobatorio';
-            ELSIF NEW.Calificación = 'MB' THEN
+                NEW.Descripcion := 'Aprobatorio';
+            ELSIF NEW.Calificacion = 'MB' THEN
                 NEW.Resultado := 'Muy Bueno';
-                NEW.Descripción := 'Aprobatorio';
-            ELSIF NEW.Calificación = 'B' THEN
+                NEW.Descripcion := 'Aprobatorio';
+            ELSIF NEW.Calificacion = 'B' THEN
                 NEW.Resultado := 'Bueno';
-                NEW.Descripción := 'Aprobatorio';
-            ELSIF NEW.Calificación = 'SU' THEN
+                NEW.Descripcion := 'Aprobatorio';
+            ELSIF NEW.Calificacion = 'SU' THEN
                 NEW.Resultado := 'Suficiente';
-                NEW.Descripción := 'Aprobatorio';
-            ELSIF NEW.Calificación = 'I' THEN
+                NEW.Descripcion := 'Aprobatorio';
+            ELSIF NEW.Calificacion = 'I' THEN
                 NEW.Resultado := 'Insuficiente';
-                NEW.Descripción := 'Reprobatorio';
-            ELSIF NEW.Calificación = 'M' THEN
+                NEW.Descripcion := 'Reprobatorio';
+            ELSIF NEW.Calificacion = 'M' THEN
                 NEW.Resultado := 'Malo';
-                NEW.Descripción := 'Reprobatorio';
+                NEW.Descripcion := 'Reprobatorio';
             END IF;
             RETURN NEW;
         END;
@@ -1108,7 +1096,8 @@ class Cargador
         /* LeerArchivo recibe un archivo .csv
         y realiza la lectura para retornalo como array */
 
-        $file = fopen($archivo, 'r');
+        // abrir con encodig utf-8
+        $file = fopen($archivo, 'r', 'UTF-8');
         $array = [];
         $primeralinea = true;
         while (($linea = fgetcsv($file)) !== FALSE) {
