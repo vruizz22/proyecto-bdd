@@ -25,8 +25,14 @@ if (isset($_GET['controller']) && isset($_GET['action'])) {
 } else {
     // Verificar si el usuario ya ha iniciado sesión
     if (isset($_SESSION['user_email'])) {
-        // Si ya ha iniciado sesión, redirigir al menú
-        header("Location: /grupo15/index.php?controller=MenuController&action=menu");
+        // Verificar si es el usuario especial de Bananer
+        if ($_SESSION['user_email'] === 'bananer@lamejor.com') {
+            // Redirigir al menú especial
+            header("Location: /grupo15/index.php?controller=MenuController&action=specialMenu");
+        } else {
+            // Redirigir al menú regular
+            header("Location: /grupo15/index.php?controller=MenuController&action=menu");
+        }
         exit();
     } else {
         // Si no ha iniciado sesión, mostrar el formulario de login
@@ -35,3 +41,4 @@ if (isset($_GET['controller']) && isset($_GET['action'])) {
     }
 }
 ?>
+
