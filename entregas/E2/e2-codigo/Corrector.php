@@ -99,8 +99,13 @@ class Corrector
             FROM
                 TempPlaneacion
             LEFT JOIN TempAsignaturas ON TempPlaneacion.Id_Asignatura = TempAsignaturas.Asignatura_id
-            ON CONFLICT (Sigla_curso, Seccion_curso, Periodo_curso) DO UPDATE -- Actualizar los run académicos
-            SET RUN_Academico = EXCLUDED.RUN_Academico 
+            ON CONFLICT (Sigla_curso, Seccion_curso, Periodo_curso) DO UPDATE -- Actualizar valores
+            SET RUN_Academico = EXCLUDED.RUN_Academico,
+                Nombre_Academico = EXCLUDED.Nombre_Academico,
+                Apellido1_Academico = EXCLUDED.Apellido1_Academico,
+                Apellido2_Academico = EXCLUDED.Apellido2_Academico,
+                Principal = EXCLUDED.Principal,
+                Ciclo = EXCLUDED.Ciclo
         ";
         $this->InsertarDatosFinales($query, 'Cursos');
 
@@ -129,6 +134,33 @@ class Corrector
         if (!$result) {
             die("Error en la actualización de datos en la tabla Cursos: " . pg_last_error($this->conn));
         }
+
+        // Insertar datos de tempPrequisitos en la tabla Cursos
+        $query = "INSERT INTO Cursos (Sigla_curso, Seccion_curso, Periodo_curso, Nombre, Nivel, Ciclo, Tipo, Oportunidad, Duracion, Nombre_Departamento, Codigo_Departamento, RUN_Academico, DV_Academico, Nombre_Academico, Apellido1_Academico, Apellido2_Academico, Principal)
+            SELECT DISTINCT
+                COALESCE(TempAsignaturas.Asignatura_id, TempPrerequisitos.Asignatura_id) AS Sigla_curso,
+                0 AS Seccion_curso, -- seccion no considerada pues no se conocen periodos antiguos
+                'X' AS Periodo_curso,
+                COALESCE(TempAsignaturas.Asignatura, TempPrerequisitos.Asignatura) AS Nombre,
+                COALESCE(TempAsignaturas.Nivel, 'X') AS Nivel,
+                COALESCE(TempAsignaturas.Ciclo, 'X') AS Ciclo,
+                'X' AS Tipo, -- Valor desconocido.
+                'X' AS Oportunidad, -- Valor desconocido.
+                'X' AS Duracion, -- Valor desconocido.
+                'X' AS Nombre_Departamento, -- Valor desconocido.
+                'X' AS Codigo_Departamento, -- Valor desconocido.
+                null AS RUN_Academico,
+                null AS DV_Academico, 
+                null AS Nombre_Academico,
+                null AS Apellido1_Academico,
+                null AS Apellido2_Academico,
+                null AS Principal
+            FROM
+                TempPrerequisitos
+            LEFT JOIN TempAsignaturas ON TempPrerequisitos.Asignatura_id = TempAsignaturas.Asignatura_id
+            ON CONFLICT (Sigla_curso, Seccion_curso, Periodo_curso) DO NOTHING -- Evitar duplicados
+        ";
+        $this->InsertarDatosFinales($query, 'Cursos');
     }
 
     public function CorregirAcademicos()
@@ -221,6 +253,50 @@ class Corrector
                   ON CONFLICT (Sigla_curso, Seccion_curso, Periodo_curso, RUN, DV, Numero_de_estudiante) DO NOTHING -- Evitar duplicados
         ";
         $this->InsertarDatosFinales($query, 'Avance_Academico');
+    }
+
+    public function CorregirProgramacionAcademica()
+    {
+        // Insertar datos en la tabla Programacion_Academica
+        $query = "INSERT INTO Programacion_Academica (Sigla_curso, Seccion_curso, Periodo_Oferta, Cupos, Sala, Hora_Inicio, Hora_Fin, Fecha_Inicio, Fecha_Fin, Inscritos)
+            SELECT DISTINCT
+                TempAsignaturas.Asignatura_id AS Sigla_curso,
+                0 AS Seccion_curso, -- seccion no considerada pues no se conocen periodos antiguos
+                TempNotas.Periodo_Asignatura AS Periodo_Oferta,
+                0 AS Cupos,
+                'X' AS Sala,
+                -- Se desconocen las horas de inicio y fin (tipo time)
+                CAST('00:00:00' AS time) AS Hora_Inicio,
+                CAST('00:00:00' AS time) AS Hora_Fin,
+                -- Se desconocen las fechas de inicio y fin (tipo date)
+                CAST('2000-01-01' AS date) AS Fecha_Inicio,
+                CAST('2000-01-01' AS date) AS Fecha_Fin,
+                0 AS Inscritos
+            FROM
+                TempNotas
+            JOIN TempAsignaturas ON TempNotas.Codigo_Asignatura = TempAsignaturas.Asignatura_id
+            ON CONFLICT (Sigla_curso, Seccion_curso, Periodo_Oferta) DO NOTHING -- Evitar duplicados
+        ";
+        $this->InsertarDatosFinales($query, 'Programacion_Academica');
+    }
+
+    public function CorregirCursosPrerrequisitos()
+    {
+        // Insertar datos en la tabla Cursos_Prerequisitos
+        $query = "INSERT INTO Cursos_Prerequisitos (Sigla_curso, Seccion_curso, Periodo_curso, Sigla_prerequisito, Ciclo)
+            SELECT DISTINCT
+                TempAsignaturas.Asignatura_id AS Sigla_curso,
+                0 AS Seccion_curso,
+                'X' AS Periodo_curso,
+                -- Concatenar el plan con el prerrequisito
+                TempPrerequisitos.Prerequisitos AS Sigla_prerequisito,
+                TempAsignaturas.Ciclo AS Ciclo
+            FROM
+                TempPrerequisitos
+            JOIN TempAsignaturas ON TempAsignaturas.Asignatura_id = TempPrerequisitos.Asignatura_id
+            ON CONFLICT (Sigla_curso, Seccion_curso, Periodo_curso, Sigla_prerequisito) DO NOTHING -- Evitar duplicados
+        ";
+        $this->InsertarDatosFinales($query, 'Cursos_Prerequisitos');
     }
 
     public function closeConn()
@@ -766,6 +842,24 @@ class Corrector
         BEGIN
             IF NEW.RUN_Academico IS NULL OR TRIM(NEW.RUN_Academico) = '' THEN
                 NEW.RUN_Academico := NEW.Codigo_departamento;
+            END IF;
+            IF TRIM(NEW.Nombre_Academico) = '' THEN
+                NEW.Nombre_Academico := NULL;
+            END IF;
+            IF TRIM(NEW.Apellido1_Academico) = '' THEN
+                NEW.Apellido1_Academico := NULL;
+            END IF;
+            IF TRIM(NEW.Apellido2_Academico) = '' OR NEW.Apellido2_Academico = '0' THEN
+                NEW.Apellido2_Academico := NULL;
+            END IF;
+            IF TRIM(NEW.Ciclo) = '' THEN
+                NEW.Ciclo := NULL;
+            END IF;
+            IF TRIM(NEW.Principal) = '' THEN
+                NEW.Principal := NULL;
+            END IF;
+            IF TRIM(NEW.Nivel) = '' THEN
+                NEW.Nivel := NULL;
             END IF;
             RETURN NEW;
         END;

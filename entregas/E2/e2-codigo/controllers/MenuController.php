@@ -15,6 +15,8 @@ class MenuController {
 
         // Incluir la vista y pasarle los resultados
         include 'views/menu.php';
+
+        //
     }
 
     public function obtenerEstudiante() {

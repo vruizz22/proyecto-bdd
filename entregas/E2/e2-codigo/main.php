@@ -17,10 +17,10 @@ $env_string = "host=localhost port=5432 dbname=postgres user=postgres password=E
 #echo "Datos cargados\n";
 
 // Llamada al módulo Corrector
-$corrector = new Corrector($env_string);
+#$corrector = new Corrector($env_string);
 #echo "Comienza la corrección de datos\n";
 #echo "Iniciando tablas... Se crean las tablas temporales y se insertan los datos\n";
-$corrector->InitTablas();
+#$corrector->InitTablas();
 #echo "Corrigiendo tablas... Se insertan los datos erroneos en la carga\n";
 #$corrector->CorregirPersonas();
 #$corrector->CorregirDepto();
@@ -28,4 +28,6 @@ $corrector->InitTablas();
 #$corrector->CorregirNotas();
 #$corrector->CorregirAcademicos();
 #$corrector->CorregirAvanceAcademico();
-$corrector->closeConn();
+#$corrector->CorregirProgramacionAcademica();
+#$corrector->CorregirCursosPrerrequisitos();
+#$corrector->closeConn();

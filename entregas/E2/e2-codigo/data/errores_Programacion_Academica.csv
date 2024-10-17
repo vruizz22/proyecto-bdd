@@ -1,0 +1,9 @@
+0,Motivo
+,"Error en la inserción: ERROR:  no existe la columna tempnotas.id_asignatura
+LINE 17:             JOIN TempAsignaturas ON TempNotas.Id_Asignatura ...
+                                             ^
+HINT:  Probablemente quiera hacer referencia a la columna «tempnotas.asignatura»."
+,"Error en la inserción: ERROR:  la columna «hora_inicio» es de tipo time without time zone pero la expresión es de tipo text
+LINE 9:                 '00:00:00' AS Hora_Inicio,
+                        ^
+HINT:  Necesitará reescribir la expresión o aplicarle una conversión de tipo."
