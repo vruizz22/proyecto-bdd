@@ -21,44 +21,151 @@ class Corrector
         $this->InsertarDatosTemporales();
     }
 
+    public function CorregirPersonas()
+    {
+        $query = "INSERT INTO Personas (RUN, DV, Nombre_1, Nombre_2, Apellido_1, Apellido_2, Correos, Telefonos)
+            SELECT DISTINCT
+                TempPlaneacion.RUN AS RUN,
+                'X' AS DV,
+                COALESCE(TempPlaneacion.Nombre_Docente, 'X') AS Nombre_1,
+                'X' AS Nombre_2,
+                COALESCE(TempPlaneacion.Apellido_Docente_1, 'X') AS Apellido_1,
+                TempPlaneacion.Apellido_Docente_2 AS Apellido_2,
+                'X' AS Correos,
+                'X' AS Telefonos
+            FROM
+                TempPlaneacion
+            WHERE TempPlaneacion.RUN != ''
+            ON CONFLICT (RUN, DV) DO NOTHING -- Evitar duplicados
+        ";
+        $this->InsertarDatosFinales($query, 'Personas');
+    }
 
     public function CorregirDepto()
     {
-        $query = "INSERT INTO Departamento (Nombre, Codigo, Nombre_Facultad) VALUES (
-            'X', 'X', 'X' -- Se insertan valores desconocidos para que los Cursos no pierdan datos, solo una vez.
-        );
-        ";
+        # Se insertan valores desconocidos para que los Cursos no pierdan datos, solo una vez.s
+        $query = "INSERT INTO Departamento (Nombre, Codigo, Nombre_Facultad) VALUES ('X', 'X', 'X');";
         $this->InsertarDatosFinales($query, 'Departamento');
     }
 
     public function CorregirCursos()
     {
         $query = "INSERT INTO Cursos (Sigla_curso, Seccion_curso, Periodo_curso, Nombre, Nivel, Ciclo, Tipo, Oportunidad, Duracion, Nombre_Departamento, Codigo_Departamento, RUN_Academico, DV_Academico, Nombre_Academico, Apellido1_Academico, Apellido2_Academico, Principal)
-            SELECT DISTINCT
+            SELECT DISTINCT 
                 COALESCE(TempAsignaturas.Asignatura_id, TempNotas.Codigo_Asignatura) AS Sigla_curso, -- En caso de haber cursos que no estén en TempAsignaturas
                 0 AS Seccion_curso, -- se agregan solo cursos viejos, sin sección determinada
                 COALESCE(TempNotas.Periodo_Asignatura, 'X')  AS Periodo_curso,
                 COALESCE(TempAsignaturas.Asignatura, TempNotas.Asignatura) AS Nombre, -- En caso de haber cursos que no estén en TempAsignaturas
                 TempAsignaturas.Nivel AS Nivel,
                 TempAsignaturas.Ciclo AS Ciclo,
-                '' AS Tipo, -- Valor desconocido.
+                'X' AS Tipo, -- Valor desconocido.
                 TempNotas.Convocatoria AS Oportunidad,
                 -- Se desconoce toda la información de los cursos antiguos sobre los docentes
-                '' AS Duracion,
+                'X' AS Duracion,
                 'X' AS Nombre_Departamento,
                 'X' AS Codigo_Departamento,
-                '' AS RUN_Academico,
-                '' AS DV, 
-                '' AS Nombre_Academico,
-                '' AS Apellido1_Academico,
-                '' AS Apellido2_Academico,
-                '' AS Principal
+                null AS RUN_Academico,
+                null AS DV, 
+                null AS Nombre_Academico,
+                null AS Apellido1_Academico,
+                null AS Apellido2_Academico,
+                null AS Principal
             FROM
                 TempAsignaturas
             FULL OUTER JOIN TempNotas ON TempAsignaturas.Asignatura_id = TempNotas.Codigo_Asignatura
             ON CONFLICT (Sigla_curso, Seccion_curso, Periodo_curso) DO NOTHING -- Evitar duplicados 
         ";
         $this->InsertarDatosFinales($query, 'Cursos');
+
+        $query = "INSERT INTO Cursos (Sigla_curso, Seccion_curso, Periodo_curso, Nombre, Nivel, Ciclo, Tipo, Oportunidad, Duracion, Nombre_Departamento, Codigo_Departamento, RUN_Academico, DV_Academico, Nombre_Academico, Apellido1_Academico, Apellido2_Academico, Principal)
+            SELECT DISTINCT ON (TempPlaneacion.Id_Asignatura, TempPlaneacion.Seccion, TempPlaneacion.Periodo)
+                TempPlaneacion.Id_Asignatura AS Sigla_curso,
+                TempPlaneacion.Seccion AS Seccion_curso,
+                TempPlaneacion.Periodo AS Periodo_curso,
+                TempPlaneacion.Asignatura AS Nombre,
+                COALESCE(TempAsignaturas.Nivel, 'X') AS Nivel,
+                COALESCE(TempAsignaturas.Ciclo, 'X') AS Ciclo,
+                'X' AS Tipo, -- Valor desconocido.
+                'X' AS Oportunidad, -- Valor desconocido.
+                TempPlaneacion.Duracion AS Duracion,
+                TempPlaneacion.Departamento AS Nombre_Departamento,
+                TempPlaneacion.Codigo_Depto AS Codigo_Departamento,
+                TempPlaneacion.RUN AS RUN_Academico,
+                'X' AS DV_Academico, 
+                TempPlaneacion.Nombre_Docente AS Nombre_Academico,
+                TempPlaneacion.Apellido_Docente_1 AS Apellido1_Academico,
+                TempPlaneacion.Apellido_Docente_2 AS Apellido2_Academico,
+                TempPlaneacion.Profesor_Principal AS Principal
+            FROM
+                TempPlaneacion
+            LEFT JOIN TempAsignaturas ON TempPlaneacion.Id_Asignatura = TempAsignaturas.Asignatura_id
+            ON CONFLICT (Sigla_curso, Seccion_curso, Periodo_curso) DO UPDATE -- Actualizar los run académicos
+            SET RUN_Academico = EXCLUDED.RUN_Academico 
+        ";
+        $this->InsertarDatosFinales($query, 'Cursos');
+
+        // Crear Triggers para actualizar los datos de la tabla Cursos
+        $this->CrearTriggers();
+        // Actualizar datos de la tabla Cursos con los triggers
+        $query = "UPDATE Cursos SET 
+            Sigla_curso = Sigla_curso, 
+            Seccion_curso = Seccion_curso, 
+            Periodo_curso = Periodo_curso, 
+            Nombre = Nombre, 
+            Nivel = Nivel, 
+            Ciclo = Ciclo, 
+            Tipo = Tipo, 
+            Oportunidad = Oportunidad, 
+            Duracion = Duracion, 
+            Nombre_Departamento = Nombre_Departamento, 
+            Codigo_Departamento = Codigo_Departamento, 
+            RUN_Academico = RUN_Academico, 
+            DV_Academico = DV_Academico, 
+            Nombre_Academico = Nombre_Academico, 
+            Apellido1_Academico = Apellido1_Academico, 
+            Apellido2_Academico = Apellido2_Academico, 
+            Principal = Principal;";
+        $result = pg_query($this->conn, $query);
+        if (!$result) {
+            die("Error en la actualización de datos en la tabla Cursos: " . pg_last_error($this->conn));
+        }
+    }
+
+    public function CorregirAcademicos()
+    {
+        // Insertar datos en la tabla Academicos
+        $query_academicos = "INSERT INTO Academicos (RUN, DV, Estamento, Grado_academico, Contrato, Jerarquia, Jornada)
+            SELECT DISTINCT
+                TempPlaneacion.RUN AS RUN,
+                'X' AS DV,
+                'Académico' AS Estamento,
+                'X' AS Grado_academico,
+                'X' AS Contrato,
+                TempPlaneacion.Jerarquizacion AS Jerarquia,
+                'X' AS Jornada
+            FROM
+                TempPlaneacion
+            WHERE TempPlaneacion.RUN != ''
+            AND TempPlaneacion.profesor_principal = 'S'
+            AND TempPlaneacion.Nombre_Docente IS NOT NULL
+            AND TempPlaneacion.Nombre_Docente != 'POR'
+            AND TempPlaneacion.Apellido_Docente_1 != 'DESIGNAR'
+            AND TempPlaneacion.Apellido_Docente_1 != 'POR'
+            AND TempPlaneacion.Nombre_Docente != 'DESIGNAR'
+            ON CONFLICT (RUN, DV) DO NOTHING -- Evitar duplicados
+        ";
+        $this->InsertarDatosFinales($query_academicos, 'Academicos');
+
+        #PARA TIRAR LOS ERRORES A LA TABLA CSV DE ERRORES
+        $result = pg_query($this->conn, $query_academicos);
+        if (!$result) {
+            // Obtener el mensaje de error
+            $error = pg_last_error($this->conn);
+
+            // Registrar el error con un registro de ejemplo o vacío
+            $registro_vacio = array_fill(0, 16, ''); // Ajusta el tamaño según las columnas
+            $this->registrarError('Academicos', $registro_vacio, "Error de inserción en Academicos: $error");
+        }
     }
 
     public function CorregirNotas()
@@ -68,8 +175,8 @@ class Corrector
             SELECT DISTINCT
                 COALESCE(TempAsignaturas.Asignatura_id, TempNotas.Codigo_Asignatura) AS Sigla_curso,
                 0 AS Seccion_curso, -- seccion no considerada pues no se conocen periodos antiguos
-                COALESCE(TempAsignaturas.Asignatura, TempNotas.Asignatura, 'X') AS Periodo_curso,
-                COALESCE(TempNotas.Numero_de_alumno, 'X') AS Numero_de_estudiante,
+                COALESCE(TempNotas.Periodo_Asignatura, 'X') AS Periodo_curso,
+                TempNotas.Numero_de_alumno AS Numero_de_estudiante,
                 TempNotas.RUN AS RUN,
                 TempNotas.DV AS DV,
                 TempNotas.Nota AS Nota,
@@ -79,9 +186,41 @@ class Corrector
             FROM
                 TempAsignaturas
             FULL OUTER JOIN TempNotas ON TempAsignaturas.Asignatura_id = TempNotas.Codigo_Asignatura
+            -- Se descartan notas en las que no se conozca el número de estudiante, el RUN y el DV
+            WHERE TempNotas.Numero_de_alumno IS NOT NULL AND TempNotas.RUN IS NOT NULL AND TempNotas.DV IS NOT NULL
             ON CONFLICT (Sigla_curso, Seccion_curso, Periodo_curso, RUN, DV, Numero_de_estudiante) DO NOTHING -- Evitar duplicados
         ";
         $this->InsertarDatosFinales($query, 'Nota');
+    }
+
+    public function CorregirAvanceAcademico()
+    {
+        // Insertar datos en la tabla Avance_Academico
+        $query = "INSERT INTO Avance_Academico (Sigla_curso, Seccion_curso, Periodo_curso, RUN, DV, Numero_de_estudiante, Periodo_Oferta, Nota, Descripcion, Resultado, Calificacion, Ultima_Carga, Ultimo_Logro, Fecha_logro)
+                  SELECT DISTINCT
+                    COALESCE(TempAsignaturas.Asignatura_id, TempNotas.Codigo_Asignatura) AS Sigla_curso,
+                    0 AS Seccion_curso,
+                    TempNotas.Periodo_Asignatura AS Periodo_curso,
+                    TempNotas.RUN AS RUN,
+                    TempNotas.DV AS DV,
+                    TempNotas.Numero_de_alumno AS Numero_de_estudiante,
+                    TempNotas.Periodo_Asignatura AS Periodo_Oferta,
+                    TempNotas.Nota AS Nota,
+                    '' AS Descripcion, -- Valor a agregar con la función actualizar_nota
+                    '' AS Resultado, -- Valor a agregar con la función actualizar_nota
+                    TempNotas.Calificacion AS Calificacion,
+                    TempEstudiantes.Ultima_Carga AS Ultima_Carga,
+                    TempEstudiantes.Logro AS Ultimo_Logro,
+                    TempEstudiantes.Fecha_Logro AS Fecha_logro
+                  FROM
+                    TempNotas
+                  LEFT JOIN TempAsignaturas ON TempAsignaturas.Asignatura_id = TempNotas.Codigo_Asignatura
+                  LEFT JOIN TempEstudiantes ON TempNotas.RUN = TempEstudiantes.RUN 
+                  AND TempNotas.Numero_de_alumno = TempEstudiantes.Numero_de_alumno AND TempNotas.DV = TempEstudiantes.DV
+                  WHERE TempNotas.Numero_de_alumno IS NOT NULL AND TempNotas.RUN IS NOT NULL AND TempNotas.DV IS NOT NULL
+                  ON CONFLICT (Sigla_curso, Seccion_curso, Periodo_curso, RUN, DV, Numero_de_estudiante) DO NOTHING -- Evitar duplicados
+        ";
+        $this->InsertarDatosFinales($query, 'Avance_Academico');
     }
 
     public function closeConn()
@@ -94,8 +233,17 @@ class Corrector
     //Función para validar RUN
     private function validarRUN($run)
     {
-        // Verificar que el RUN sea un número entero positivo y con una longitud correcta
-        return is_numeric($run) && $run > 0 && strlen($run) >= 7 && strlen(string: $run) <= 8;
+        $run = trim($run);
+        if (is_numeric($run)) { #asi redondeamos el 0.1
+            $run = round(floatval($run));
+        }
+        $run = (string)$run;
+        #Con esta parte nos aseguramos que el RUN sea numerico y positivo
+        if (ctype_digit($run) && strlen($run) >= 7 && strlen($run) <= 8) {
+            return $run;
+        } else {
+            return false;
+        }
     }
 
     //Función para validar Nombre
@@ -127,6 +275,42 @@ class Corrector
             $cadena = mb_convert_encoding($cadena, 'UTF-8', $encoding);
         }
         return $cadena;
+    }
+
+    private function registrarError($tabla, $registro, $motivo)
+    {
+        // Definir la ruta de la carpeta data
+        $ruta_carpeta = __DIR__ . "/data";
+
+        // Crear la carpeta data si no existe
+        if (!file_exists($ruta_carpeta)) {
+            mkdir($ruta_carpeta, permissions: 0777, recursive: true);
+        }
+
+        // Definir la ruta del archivo de errores dentro de la carpeta data
+        $ruta_archivo = $ruta_carpeta . "/errores_{$tabla}.csv";
+
+        // Verificar si el archivo ya existe para escribir las cabeceras
+        $es_nuevo = !file_exists($ruta_archivo);
+
+        // Abrir el archivo en modo append
+        $fp = fopen($ruta_archivo, 'a');
+        if ($fp === false) {
+            die("No se pudo abrir el archivo de errores: $ruta_archivo");
+        }
+        // Si es un archivo nuevo, escribir la cabecera
+        if ($es_nuevo) {
+            // Obtener las claves del arreglo para las cabeceras
+            $cabecera = array_keys($registro);
+            $cabecera[] = 'Motivo'; // Añadir una columna para el motivo del error
+            fputcsv($fp, $cabecera);
+        }
+        // Añadir el motivo al registro
+        $registro[] = $motivo; // Cambiar de $registro['Motivo'] a añadir al final
+        // Escribir el registro en el archivo CSV
+        fputcsv($fp, $registro);
+        // Cerrar el archivo
+        fclose($fp);
     }
 
     private function CrearTablasTemporales()
@@ -304,6 +488,12 @@ class Corrector
         $datos = array_combine($nombre_archivos, $datos_array);
 
         foreach ($datos['Asignaturas'] as $asignatura) {
+            // ACA QUIERO VALIDAR DATOS Y TIRAR ERRORES AL ARCHIVO DE ERROR .CSV
+            if (empty($asignatura[0]) || empty($asignatura[1])) {
+                $this->registrarError('Asignaturas', $asignatura, 'Plan o Asignatura_id vacío');
+                continue; // Saltar al siguiente registro
+            }
+
             $query = "INSERT INTO TempAsignaturas (Plan, Asignatura_id, Asignatura, Nivel, Ciclo) VALUES (
                 '{$asignatura[0]}',  -- Plan
                 '{$asignatura[1]}',  -- Asignatura_id
@@ -313,6 +503,8 @@ class Corrector
             )";
             $result = pg_query($this->conn, $query);
             if (!$result) {
+                $error = pg_last_error($this->conn);
+                $this->registrarError('Asignaturas', $asignatura, "Error de inserción: $error");
                 die("Error en la inserción de datos en la tabla temporal TempAsignaturas: " . pg_last_error());
             }
         }
@@ -355,6 +547,14 @@ class Corrector
         }
 
         foreach ($datos['Docentes_planificados'] as $docente) {
+            // ACA QUIERO VALIDAR DATOS Y TIRAR ERRORES AL ARCHIVO DE ERROR .CSV
+            $RUN = $this->validarRUN($docente[0]);
+            if ($RUN === false) {
+                $this->registrarError('Docentes_planificados', $docente, 'RUN inválido');
+                continue; // Saltar al siguiente registro
+            }
+
+
             $query = "INSERT INTO TempDocentesPlanificados (RUN, Nombre, Apellido_P, Telefono, Email_personal, Email_institucional, Dedicacion, Contrato, Diurno, Vespertino, Sede, Carrera, Grado_academico, Jerarquia, Cargo, Estamento) VALUES (
                 " . (is_numeric($docente[0]) ? $docente[0] : "NULL") . ",  -- RUN
                 '{$docente[1]}',  -- Nombre
@@ -375,6 +575,8 @@ class Corrector
             )";
             $result = pg_query($this->conn, $query);
             if (!$result) {
+                $error = pg_last_error($this->conn);
+                $this->registrarError('Docentes_planificados', $docente, "Error de inserción: $error");
                 die("Error en la inserción de datos en la tabla temporal TempDocentesPlanificados: " . pg_last_error());
             }
         }
@@ -532,7 +734,57 @@ class Corrector
     {
         $result = pg_query($this->conn, $query);
         if (!$result) {
-            die("Error en la inserción de datos en la tabla $nombre_tabla: " . pg_last_error());
+            # PARA REGISTRAR ERRORES .CSV
+            $registro_vacio = array_fill(0, 1, ''); // Ajusta según la estructura de la tabla
+            $this->registrarError($nombre_tabla, $registro_vacio, "Error en la inserción: " . pg_last_error($this->conn));
+
+            die("Error en la inserción de datos en la tabla $nombre_tabla: " . pg_last_error($this->conn));
+        } else {
+            // Obtener el número de filas afectadas
+            $filas_insertadas = pg_affected_rows($result);
+            echo "Filas insertadas en $nombre_tabla: $filas_insertadas\n";
+        }
+    }
+
+    private function CrearTriggers()
+    {
+        // Eliminar los triggers si existen
+        $queries = [
+            "DROP TRIGGER IF EXISTS before_update_cursos ON Cursos",
+            "DROP FUNCTION IF EXISTS before_update_cursos_func() CASCADE",
+        ];
+        foreach ($queries as $query) {
+            $result = pg_query($this->conn, $query);
+            if (!$result) {
+                die("Error en la eliminación de triggers: " . pg_last_error($this->conn));
+            }
+        }
+
+        // Crear la función para actualizar la tabla Cursos
+        $funcion_actualizar_cursos = "CREATE OR REPLACE FUNCTION before_update_cursos_func()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            IF NEW.RUN_Academico IS NULL OR TRIM(NEW.RUN_Academico) = '' THEN
+                NEW.RUN_Academico := NEW.Codigo_departamento;
+            END IF;
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;";
+
+        $result = pg_query($this->conn, $funcion_actualizar_cursos);
+        if (!$result) {
+            die("Error en la creación de la funcion_actualizar_cursos: " . pg_last_error($this->conn));
+        }
+
+        // Crear el trigger para la tabla Cursos
+        $trigger_cursos = "CREATE TRIGGER before_update_cursos
+        BEFORE UPDATE ON Cursos
+        FOR EACH ROW
+        EXECUTE FUNCTION before_update_cursos_func();";
+
+        $result = pg_query($this->conn, $trigger_cursos);
+        if (!$result) {
+            die("Error en la creación del trigger(cursos): " . pg_last_error($this->conn));
         }
     }
 

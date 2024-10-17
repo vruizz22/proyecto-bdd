@@ -33,5 +33,24 @@ class User {
 
         return null; // Retornar null si el usuario no se encuentra
     }
+
+    function registrarUsuarioCSV($correo, $clave) {
+        $filename = 'data/users.csv';
+    
+        // Encriptar la clave antes de guardarla;
+    
+        // Abrir el archivo CSV en modo 'append' para agregar el nuevo registro
+        $file = fopen($filename, 'a');
+        if ($file === false) {
+            die("No se pudo abrir el archivo CSV.");
+        }
+    
+        // Escribir el correo y la clave encriptada en el CSV
+        fputcsv($file, [$correo, $clave]);
+    
+        // Cerrar el archivo
+        fclose($file);
+    }
+    
 }
 ?>

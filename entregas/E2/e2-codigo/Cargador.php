@@ -397,7 +397,7 @@ class Cargador
                 TempAsignaturas.Asignatura AS Nombre,
                 TempAsignaturas.Nivel AS Nivel,
                 TempAsignaturas.Ciclo AS Ciclo,
-                '' AS Tipo, -- Valor desconocido.
+                'X' AS Tipo, -- Valor desconocido.
                 TempNotas.Convocatoria AS Oportunidad,
                 TempPlaneacion.Duracion AS Duracion,
                 TempPlaneacion.Departamento AS Nombre_Departamento,
@@ -976,53 +976,24 @@ class Cargador
 
     private function CrearTriggers()
     {
-        // Eliminar los triggers si existen
+        // Eliminar los triggers y funciones si existen
         $queries = [
-            "DROP FUNCTION IF EXISTS before_insert_cursos_func()",
-            "DROP TRIGGER IF EXISTS before_insert_cursos ON Cursos",
-            "DROP FUNCTION IF EXISTS actualizar_nota()",
             "DROP TRIGGER IF EXISTS trigger_actualizar_nota ON Nota",
-            "DROP TRIGGER IF EXISTS trigger_actualizar_nota_avance ON Avance_Academico"
+            "DROP TRIGGER IF EXISTS trigger_actualizar_nota_avance ON Avance_Academico",
+            "DROP FUNCTION IF EXISTS actualizar_nota() CASCADE"
         ];
         foreach ($queries as $query) {
             $result = pg_query($this->conn, $query);
             if (!$result) {
-                die("Error en la eliminación de triggers: " . pg_last_error());
+                die("Error en la eliminación de triggers o funciones: " . pg_last_error($this->conn));
             }
-        }
-
-        // Crear la función para actualizar la tabla Cursos
-        $funcion_actualizar_cursos = "CREATE OR REPLACE FUNCTION before_insert_cursos_func()
-        RETURNS TRIGGER AS $$
-        BEGIN
-            IF NEW.RUN_Academico IS NULL THEN
-                NEW.RUN_Academico = NEW.Codigo_Departamento;
-            END IF;
-            RETURN NEW;
-        END;
-        $$ LANGUAGE plpgsql;";
-
-        $result = pg_query($this->conn, $funcion_actualizar_cursos);
-        if (!$result) {
-            die("Error en la creación de la funcion_actualizar_cursos: " . pg_last_error());
-        }
-
-        // Crear el trigger para la tabla Cursos
-        $trigger_cursos = "CREATE TRIGGER before_insert_cursos
-        BEFORE INSERT ON Cursos
-        FOR EACH ROW
-        EXECUTE FUNCTION before_insert_cursos_func();";
-
-        $result = pg_query($this->conn, $trigger_cursos);
-        if (!$result) {
-            die("Error en la creación del trigger(cursos): " . pg_last_error());
         }
 
         // Crear la función para actualizar la tabla Nota
         $funcion_actualizar_nota = "CREATE OR REPLACE FUNCTION actualizar_nota()
         RETURNS TRIGGER AS $$
         BEGIN
-            IF NEW.Calificacion IS NULL OR New.Nota IS NULL THEN
+            IF NEW.Calificacion IS NULL OR NEW.Nota IS NULL THEN
                 NEW.Resultado := 'Curso Vigente en el período académico';
                 NEW.Descripcion := 'curso vigente';
             ELSIF NEW.Calificacion = 'P' THEN
@@ -1065,7 +1036,7 @@ class Cargador
 
         $result = pg_query($this->conn, $funcion_actualizar_nota);
         if (!$result) {
-            die("Error en la creación de la funcion_actualizar_nota: " . pg_last_error());
+            die("Error en la creación de la función actualizar_nota: " . pg_last_error($this->conn));
         }
 
         // Crear el trigger para la tabla Nota
@@ -1076,7 +1047,7 @@ class Cargador
 
         $result = pg_query($this->conn, $trigger_actualizar_nota);
         if (!$result) {
-            die("Error en la creación del trigger(nota): " . pg_last_error());
+            die("Error en la creación del trigger trigger_actualizar_nota: " . pg_last_error($this->conn));
         }
 
         // Crear el trigger para la tabla Avance_Academico
@@ -1087,7 +1058,7 @@ class Cargador
 
         $result = pg_query($this->conn, $trigger_actualizar_nota_avance);
         if (!$result) {
-            die("Error en la creación del trigger (avance): " . pg_last_error());
+            die("Error en la creación del trigger trigger_actualizar_nota_avance: " . pg_last_error($this->conn));
         }
     }
 
