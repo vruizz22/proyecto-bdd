@@ -23,10 +23,142 @@ class Database
         }
         return pg_fetch_assoc($result);
     }
-
-    public function close()
+    public function PorcentajeAprobacion($periodo)
     {
-        pg_close($this->connection);
+        // Consulta SQL con el período como parámetro
+        $query = "SELECT 
+            Cursos.Sigla_curso,
+            Cursos.Nombre,
+            COALESCE(
+                ROUND(
+                    SUM(CASE WHEN Avance_Academico.Nota >= 4.0 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(Avance_Academico.Numero_de_estudiante), 0), 
+                2), 0) AS Porcentaje_Aprobacion
+        FROM 
+            Cursos
+        JOIN 
+            Programacion_Academica ON Cursos.Sigla_curso = Programacion_Academica.Sigla_curso
+                                    AND Cursos.Seccion_curso = Programacion_Academica.Seccion_curso
+                                    AND Cursos.Periodo_curso = Programacion_Academica.Periodo_Oferta
+        LEFT JOIN 
+            Avance_Academico ON Cursos.Sigla_curso = Avance_Academico.Sigla_curso
+                            AND Cursos.Seccion_curso = Avance_Academico.Seccion_curso
+                            AND Cursos.Periodo_curso = Avance_Academico.Periodo_curso
+        WHERE 
+            Programacion_Academica.Periodo_Oferta = $1
+        GROUP BY 
+            Cursos.Sigla_curso, 
+            Cursos.Nombre;";
+
+        // Preparar y ejecutar la consulta con el parámetro
+        $result = pg_query_params($this->connection, $query, array($periodo));
+        if (!$result) {
+            die("Error en la consulta: " . pg_last_error($this->connection));
+        }
+
+        // Convertir todos los registros en JSON y retornarlos
+        $porcentajeAprobacion = [];
+        while ($row = pg_fetch_assoc($result)) {
+            $porcentajeAprobacion[] = $row;
+        }
+
+        return $porcentajeAprobacion;
+    }
+    public function PromedioPorcentajeAprobacion($codigo_curso)
+    {
+        $query = "SELECT 
+            Sigla_curso,
+            AVG(Porcentaje_Aprobacion) AS Promedio_Porcentaje_Aprobacion
+        FROM (
+            SELECT 
+                Cursos.Sigla_curso,
+                ROUND(
+                    SUM(CASE WHEN Avance_Academico.Nota >= 4.0 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(Avance_Academico.Numero_de_estudiante), 0), 
+                2) AS Porcentaje_Aprobacion
+            FROM 
+                Cursos
+            JOIN 
+                Programacion_Academica ON Cursos.Sigla_curso = Programacion_Academica.Sigla_curso
+                                        AND Cursos.Seccion_curso = Programacion_Academica.Seccion_curso
+                                        AND Cursos.Periodo_curso = Programacion_Academica.Periodo_Oferta
+            LEFT JOIN 
+                Avance_Academico ON Cursos.Sigla_curso = Avance_Academico.Sigla_curso
+                                AND Cursos.Seccion_curso = Avance_Academico.Seccion_curso
+                                AND Cursos.Periodo_curso = Avance_Academico.Periodo_curso
+            WHERE 
+                Cursos.Sigla_curso = $1
+            GROUP BY 
+                Cursos.Sigla_curso, Cursos.Seccion_curso, Cursos.Periodo_curso
+        ) AS Subconsulta
+        GROUP BY 
+            Sigla_curso;";
+
+        // Preparar y ejecutar la consulta con el parámetro
+        $result = pg_query_params($this->connection, $query, array($codigo_curso));
+        if (!$result) {
+            die("Error en la consulta: " . pg_last_error($this->connection));
+        }
+
+        // Convertir todos los registros en JSON y printearlos
+        $promedioPorcentajeAprobacion = [];
+        while ($row = pg_fetch_assoc($result)) {
+            $promedioPorcentajeAprobacion[] = $row;
+        }
+
+        return $promedioPorcentajeAprobacion;
+    }
+
+    public function TomaRamos($numeroEstudiante)
+    {
+
+        // Pasar numero de estudiante a int
+        $numeroEstudiante = (int)$numeroEstudiante;
+
+        // Consulta SQL con el número de estudiante como parámetro
+        $query = "WITH EstudianteVigente AS (
+            SELECT DISTINCT 
+                e.RUN, e.DV, e.Numero_de_estudiante
+            FROM 
+                Estudiantes e
+            JOIN Avance_Academico aa ON e.RUN = aa.RUN AND e.DV = aa.DV AND e.Numero_de_estudiante = aa.Numero_de_estudiante
+            WHERE 
+                e.Numero_de_estudiante = $1
+                AND aa.Periodo_Oferta = '2024-02'
+                AND (e.Bloqueo = 'N' OR e.Bloqueo = 'X')
+        ),
+        
+        CursosEnCurso AS (
+            SELECT DISTINCT 
+                aa.Sigla_curso
+            FROM 
+                Avance_Academico aa
+            JOIN EstudianteVigente ev ON aa.RUN = ev.RUN AND aa.DV = ev.DV AND aa.Numero_de_estudiante = ev.Numero_de_estudiante
+            WHERE 
+                aa.Periodo_curso = '2024-02'
+        )
+        
+        SELECT 
+            cp.Sigla_curso
+        FROM 
+            Cursos_prerequisitos cp
+        -- Eliminar plan de cec.Sigla_curso para comparar solo la sigla asignatura
+        JOIN CursosEnCurso cec ON SUBSTRING(cec.Sigla_curso, LENGTH((SELECT Planes_estudio.codigo_plan FROM Planes_estudio WHERE Planes_estudio.codigo_plan = SUBSTRING(cec.Sigla_curso, 1, 3))) + 1) = cp.Sigla_prerequisito
+        WHERE 
+            cp.Sigla_curso NOT IN (SELECT Sigla_curso FROM CursosEnCurso)
+        ";
+
+        // Preparar y ejecutar la consulta con el parámetro
+        $result = pg_query_params($this->connection, $query, array($numeroEstudiante));
+        if (!$result) {
+            die("Error en la consulta: " . pg_last_error($this->connection));
+        }
+
+        // Convertir todos los registros en JSON y printearlos
+        $tomaRamos = [];
+        while ($row = pg_fetch_assoc($result)) {
+            $tomaRamos[] = $row;
+        }
+
+        return $tomaRamos;
     }
 
     public function obtenerEstudiantePorNumero($numeroEstudiante)
@@ -151,5 +283,10 @@ class Database
         $result = pg_query($this->connection, $sql);
     
         return pg_num_rows($result) > 0;
+    }
+
+    public function close()
+    {
+        pg_close($this->connection);
     }
 }

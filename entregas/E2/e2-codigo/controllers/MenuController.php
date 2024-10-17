@@ -19,6 +19,58 @@ class MenuController {
         //
     }
 
+    public function obtenerPorcentajeAprobacion()
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['periodo'])) {
+            $periodo = $_POST['periodo'];
+
+            $db = new Database();
+            $porcentajeAprobacion = $db->PorcentajeAprobacion($periodo);
+            $db->close();
+
+            // Incluir la vista y pasarle los resultados
+            include 'views/menu.php';
+        } else {
+            // Redirigir al menú si no se envió el formulario correctamente
+            $this->menu();
+        }
+    }
+
+    public function obtenerPromedioPorcentajeAprobacion()
+    {
+        // codigo curso
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['codigo_curso'])) {
+            $codigo_curso = $_POST['codigo_curso'];
+
+            $db = new Database();
+            $promedioPorcentajeAprobacion = $db->PromedioPorcentajeAprobacion($codigo_curso);
+            $db->close();
+
+            // Incluir la vista y pasarle los resultados
+            include 'views/menu.php';
+        } else {
+            // Redirigir al menú si no se envió el formulario correctamente
+            $this->menu();
+        }
+    }
+
+    public function obtenerTomaRamos(){
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['numero_estudiante'])) {
+            $numeroEstudiante = $_POST['numero_estudiante'];
+
+            # FUnciona con 2114
+            $db = new Database();
+            $tomaRamos = $db->TomaRamos($numeroEstudiante);
+            $db->close();
+
+            // Incluir la vista y pasarle los resultados
+            include 'views/menu.php';
+        } else {
+            // Redirigir al menú si no se envió el formulario correctamente
+            $this->menu();
+        }
+    }
+    
     public function obtenerEstudiante() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['numero_estudiante'])) {
             $numeroEstudiante = $_POST['numero_estudiante'];
