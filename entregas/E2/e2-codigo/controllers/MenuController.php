@@ -1,12 +1,15 @@
 <?php
 
-class MenuController {
-    public function menu() {
+class MenuController
+{
+    public function menu()
+    {
         // Solo se muestra el menú inicial
         include 'views/menu.php';
     }
 
-    public function realizarConsulta() {
+    public function realizarConsulta()
+    {
         $db = new Database();
 
         // Consulta 1: Contar estudiantes en 2024-2
@@ -54,7 +57,8 @@ class MenuController {
         }
     }
 
-    public function obtenerTomaRamos(){
+    public function obtenerTomaRamos()
+    {
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['numero_estudiante'])) {
             $numeroEstudiante = $_POST['numero_estudiante'];
 
@@ -70,8 +74,9 @@ class MenuController {
             $this->menu();
         }
     }
-    
-    public function obtenerEstudiante() {
+
+    public function obtenerEstudiante()
+    {
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['numero_estudiante'])) {
             $numeroEstudiante = $_POST['numero_estudiante'];
 
@@ -87,38 +92,42 @@ class MenuController {
         }
     }
 
-    public function specialMenu() {
-        echo 'xddd';
-
+    public function specialMenu()
+    {
+        // llamar a registrarUsuario
         include 'views/special_menu.php';
     }
 
-    public function registrarUsuario() {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $correo = $_POST['correo'];
-            $clave = $_POST['clave'];
-    
+    public function registrarUsuario()
+    {
+        echo "Registrando usuario...";
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email']) && isset($_POST['password'])) {
+            echo "Registrando usuario...";
+            $correo = $_POST['email'];
+            $clave = $_POST['password'];
+            echo "Correo: $correo, Clave: $clave";
+
             $db = new Database();
-    
+
             // Verificar si el correo está en la tabla Personas
             $persona = $db->obtenerPersonaPorCorreo($correo);
-    
+
             if ($persona) {
                 $rol = '';
-    
+
                 // Verificar si es académico o administrativo
-                $esAcademico = $db->esAcademico($persona['RUN']);
-                $esAdministrativo = $db->esAdministrativo($persona['RUN']);
-    
+                $esAcademico = $db->esAcademico($persona['run']);
+                $esAdministrativo = $db->esAdministrativo($persona['run']);
+
                 if ($esAcademico) {
                     $rol = 'Academico/Administrativo';
                 } elseif ($esAdministrativo) {
                     $rol = 'Administrativo';
                 }
-    
+
                 if ($rol !== '') {
                     // Guardar en el CSV (encriptar la clave antes de guardar)
-                    $this->guardarEnCSV($correo, password_hash($clave, PASSWORD_BCRYPT), $rol);
+                    $this->guardarEnCSV($correo, $clave, $rol);
                     echo "Usuario registrado correctamente.";
                 } else {
                     echo "El correo no está asociado a un académico o administrativo.";
@@ -126,20 +135,20 @@ class MenuController {
             } else {
                 echo "El correo no está registrado en la base de datos.";
             }
-    
+
             $db->close();
         }
     }
-    
+
     // Función para guardar en el CSV
-    private function guardarEnCSV($correo, $clave, $rol) {
+    private function guardarEnCSV($correo, $clave, $rol)
+    {
         $file = fopen('data/users.csv', 'a'); // Abre el archivo en modo de añadir
-        fputcsv($file, [$correo, $clave, $rol]);
-        fclose($file);
+        if ($file !== false) {
+            fputcsv($file, [$correo, $clave, $rol]);
+            fclose($file);
+        } else {
+            echo "Error al abrir el archivo CSV.";
+        }
     }
-
-    
-    
 }
-?>
-

@@ -84,7 +84,7 @@ class Database
                 Avance_Academico ON Cursos.Sigla_curso = Avance_Academico.Sigla_curso
                                 AND Cursos.Seccion_curso = Avance_Academico.Seccion_curso
                                 AND Cursos.Periodo_curso = Avance_Academico.Periodo_curso
-            WHERE 
+            WHERE        
                 Cursos.Sigla_curso = $1
             GROUP BY 
                 Cursos.Sigla_curso, Cursos.Seccion_curso, Cursos.Periodo_curso
@@ -109,7 +109,6 @@ class Database
 
     public function TomaRamos($numeroEstudiante)
     {
-
         // Pasar numero de estudiante a int
         $numeroEstudiante = (int)$numeroEstudiante;
 
@@ -125,7 +124,7 @@ class Database
                 AND aa.Periodo_Oferta = '2024-02'
                 AND (e.Bloqueo = 'N' OR e.Bloqueo = 'X')
         ),
-        
+
         CursosEnCurso AS (
             SELECT DISTINCT 
                 aa.Sigla_curso
@@ -135,14 +134,15 @@ class Database
             WHERE 
                 aa.Periodo_curso = '2024-02'
         )
-        
+
         SELECT 
             cp.Sigla_curso
         FROM 
             Cursos_prerequisitos cp
         -- Eliminar plan de cec.Sigla_curso para comparar solo la sigla asignatura
-        JOIN CursosEnCurso cec ON SUBSTRING(cec.Sigla_curso, LENGTH((SELECT Planes_estudio.codigo_plan FROM Planes_estudio WHERE Planes_estudio.codigo_plan = SUBSTRING(cec.Sigla_curso, 1, 3))) + 1) = cp.Sigla_prerequisito
-        WHERE 
+        -- Para esto Cursos tiene el atributo plan_curso, donde sigla_curso - plan_curso = sigla_asignatura
+        JOIN CursosEnCurso cec ON SUBSTRING(cec.Sigla_curso, LENGTH((SELECT Plan_curso FROM Cursos WHERE Sigla_curso = cp.Sigla_curso LIMIT 1)) + 1) = cp.Sigla_prerequisito
+        WHERE
             cp.Sigla_curso NOT IN (SELECT Sigla_curso FROM CursosEnCurso)
         ";
 
@@ -259,7 +259,7 @@ class Database
 
     public function obtenerPersonaPorCorreo($correo) {
         $correo = pg_escape_string($correo);
-        $sql = "SELECT * FROM Personas WHERE Correos = '$correo'";
+        $sql = "SELECT * FROM Personas WHERE Correo_institucional = '$correo'";
         $result = pg_query($this->connection, $sql);
     
         if (!$result) {
@@ -288,5 +288,11 @@ class Database
     public function close()
     {
         pg_close($this->connection);
+    }
+
+    private function sanitize($input)
+    {
+        # Eliminar espacio en blanco al principio y al final
+        return trim($input);
     }
 }

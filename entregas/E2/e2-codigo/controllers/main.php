@@ -2,46 +2,46 @@
 // Conexión a la base de datos
 $conn = pg_connect("host=localhost port=5432 dbname=postgres user=postgres password=Elefante$15");
 
-// Obtener el número de estudiante desde los parámetros de la URL
-$numeroEstudiante = 2114;
-// Pasar numero de estudiante a int
-$numeroEstudiante = (int)$numeroEstudiante;
+// funcion para leer el archivo csv
+function leerArchivo($archivo)
+{
+    // abrir con encodig utf-8
+    $file = fopen($archivo, 'r', 'UTF-8');
+    $array = [];
+    $primeralinea = true;
+    while (($linea = fgetcsv($file)) !== FALSE) {
+        if ($primeralinea) {
+            $primeralinea = false;
+            continue; // Ignorar la primera línea
+        }
+        $array[] = $linea;
+    }
+    fclose($file);
+    return $array;
+}
 
-// Consulta SQL con el número de estudiante como parámetro
-$query = "WITH EstudianteVigente AS (
-    SELECT DISTINCT 
-        e.RUN, e.DV, e.Numero_de_estudiante
-    FROM 
-        Estudiantes e
-    JOIN Avance_Academico aa ON e.RUN = aa.RUN AND e.DV = aa.DV AND e.Numero_de_estudiante = aa.Numero_de_estudiante
-    WHERE 
-        e.Numero_de_estudiante = $1
-        AND aa.Periodo_Oferta = '2024-02'
-        AND (e.Bloqueo = 'N' OR e.Bloqueo = 'X')
-),
+// Recibir un curso vigente de data/cursos_vigentes.csv
+$cursos_vigentes = '../data/cursos_vigentes.csv';
+// Tiene la forma: [Id Asignatura, Asignatura]
+$codigoCurso = leerArchivo($cursos_vigentes);
+$codigoCurso = array_column($codigoCurso, 0);
+$nombreCurso = leerArchivo($cursos_vigentes);
+$nombreCurso = array_column($nombreCurso, 1);
 
-CursosEnCurso AS (
-    SELECT DISTINCT 
-        aa.Sigla_curso
-    FROM 
-        Avance_Academico aa
-    JOIN EstudianteVigente ev ON aa.RUN = ev.RUN AND aa.DV = ev.DV AND aa.Numero_de_estudiante = ev.Numero_de_estudiante
-    WHERE 
-        aa.Periodo_curso = '2024-02'
-)
+// Curso seleccionado por el grupo (por ejemplo, el primero del archivo)
+$curso_seleccionado_id = $codigoCurso[0];
+$curso_seleccionado_nombre = $nombreCurso[0];
 
-SELECT 
-    cp.Sigla_curso
-FROM 
-    Cursos_prerequisitos cp
--- Eliminar plan de cec.Sigla_curso para comparar solo la sigla asignatura
-JOIN CursosEnCurso cec ON SUBSTRING(cec.Sigla_curso, LENGTH((SELECT Planes_estudio.codigo_plan FROM Planes_estudio WHERE Planes_estudio.codigo_plan = SUBSTRING(cec.Sigla_curso, 1, 3))) + 1) = cp.Sigla_prerequisito
-WHERE 
-    cp.Sigla_curso NOT IN (SELECT Sigla_curso FROM CursosEnCurso)
-";
+$query = "SELECT DISTINCT Nota.Numero_de_estudiante, Nota.Nota, Nota.Calificacion
+-- Se asume JUL y DIC (examenes)
+FROM Nota
+JOIN Cursos ON Nota.Sigla_curso = Cursos.Sigla_curso
+WHERE Nota.Sigla_curso = 'GH13458'
+AND Nota.nota IS NOT NULL 
+AND (Cursos.Oportunidad = 'JUL' OR Cursos.Oportunidad = 'DIC')";
 
 // Preparar y ejecutar la consulta con el parámetro
-$result = pg_query_params($conn, $query, array($numeroEstudiante));
+$result = pg_query($conn, $query);
 if (!$result) {
     die("Error en la consulta: " . pg_last_error($conn));
 }

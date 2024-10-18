@@ -23,7 +23,7 @@ class Corrector
 
     public function CorregirPersonas()
     {
-        $query = "INSERT INTO Personas (RUN, DV, Nombre_1, Nombre_2, Apellido_1, Apellido_2, Correos, Telefonos)
+        $query = "INSERT INTO Personas (RUN, DV, Nombre_1, Nombre_2, Apellido_1, Apellido_2, Correo_personal, Correo_institucional, Telefonos)
             SELECT DISTINCT
                 TempPlaneacion.RUN AS RUN,
                 'X' AS DV,
@@ -31,7 +31,8 @@ class Corrector
                 'X' AS Nombre_2,
                 COALESCE(TempPlaneacion.Apellido_Docente_1, 'X') AS Apellido_1,
                 TempPlaneacion.Apellido_Docente_2 AS Apellido_2,
-                'X' AS Correos,
+                'X' AS Correo_personal,
+                'X' AS Correo_institucional,
                 'X' AS Telefonos
             FROM
                 TempPlaneacion
@@ -50,7 +51,7 @@ class Corrector
 
     public function CorregirCursos()
     {
-        $query = "INSERT INTO Cursos (Sigla_curso, Seccion_curso, Periodo_curso, Nombre, Nivel, Ciclo, Tipo, Oportunidad, Duracion, Nombre_Departamento, Codigo_Departamento, RUN_Academico, DV_Academico, Nombre_Academico, Apellido1_Academico, Apellido2_Academico, Principal)
+        $query = "INSERT INTO Cursos (Sigla_curso, Seccion_curso, Periodo_curso, Nombre, Nivel, Ciclo, Tipo, Oportunidad, Duracion, Nombre_Departamento, Codigo_Departamento, RUN_Academico, DV_Academico, Nombre_Academico, Apellido1_Academico, Apellido2_Academico, Principal, Plan_curso)
             SELECT DISTINCT 
                 COALESCE(TempAsignaturas.Asignatura_id, TempNotas.Codigo_Asignatura) AS Sigla_curso, -- En caso de haber cursos que no estén en TempAsignaturas
                 0 AS Seccion_curso, -- se agregan solo cursos viejos, sin sección determinada
@@ -69,7 +70,8 @@ class Corrector
                 null AS Nombre_Academico,
                 null AS Apellido1_Academico,
                 null AS Apellido2_Academico,
-                null AS Principal
+                null AS Principal,
+                TempAsignaturas.Plan AS Plan_curso
             FROM
                 TempAsignaturas
             FULL OUTER JOIN TempNotas ON TempAsignaturas.Asignatura_id = TempNotas.Codigo_Asignatura
@@ -77,7 +79,7 @@ class Corrector
         ";
         $this->InsertarDatosFinales($query, 'Cursos');
 
-        $query = "INSERT INTO Cursos (Sigla_curso, Seccion_curso, Periodo_curso, Nombre, Nivel, Ciclo, Tipo, Oportunidad, Duracion, Nombre_Departamento, Codigo_Departamento, RUN_Academico, DV_Academico, Nombre_Academico, Apellido1_Academico, Apellido2_Academico, Principal)
+        $query = "INSERT INTO Cursos (Sigla_curso, Seccion_curso, Periodo_curso, Nombre, Nivel, Ciclo, Tipo, Oportunidad, Duracion, Nombre_Departamento, Codigo_Departamento, RUN_Academico, DV_Academico, Nombre_Academico, Apellido1_Academico, Apellido2_Academico, Principal, Plan_curso)
             SELECT DISTINCT ON (TempPlaneacion.Id_Asignatura, TempPlaneacion.Seccion, TempPlaneacion.Periodo)
                 TempPlaneacion.Id_Asignatura AS Sigla_curso,
                 TempPlaneacion.Seccion AS Seccion_curso,
@@ -95,7 +97,8 @@ class Corrector
                 TempPlaneacion.Nombre_Docente AS Nombre_Academico,
                 TempPlaneacion.Apellido_Docente_1 AS Apellido1_Academico,
                 TempPlaneacion.Apellido_Docente_2 AS Apellido2_Academico,
-                TempPlaneacion.Profesor_Principal AS Principal
+                TempPlaneacion.Profesor_Principal AS Principal,
+                TempAsignaturas.Plan AS Plan_curso
             FROM
                 TempPlaneacion
             LEFT JOIN TempAsignaturas ON TempPlaneacion.Id_Asignatura = TempAsignaturas.Asignatura_id
@@ -129,14 +132,15 @@ class Corrector
             Nombre_Academico = Nombre_Academico, 
             Apellido1_Academico = Apellido1_Academico, 
             Apellido2_Academico = Apellido2_Academico, 
-            Principal = Principal;";
+            Principal = Principal,
+            Plan_curso = Plan_curso;";
         $result = pg_query($this->conn, $query);
         if (!$result) {
             die("Error en la actualización de datos en la tabla Cursos: " . pg_last_error($this->conn));
         }
 
         // Insertar datos de tempPrequisitos en la tabla Cursos
-        $query = "INSERT INTO Cursos (Sigla_curso, Seccion_curso, Periodo_curso, Nombre, Nivel, Ciclo, Tipo, Oportunidad, Duracion, Nombre_Departamento, Codigo_Departamento, RUN_Academico, DV_Academico, Nombre_Academico, Apellido1_Academico, Apellido2_Academico, Principal)
+        $query = "INSERT INTO Cursos (Sigla_curso, Seccion_curso, Periodo_curso, Nombre, Nivel, Ciclo, Tipo, Oportunidad, Duracion, Nombre_Departamento, Codigo_Departamento, RUN_Academico, DV_Academico, Nombre_Academico, Apellido1_Academico, Apellido2_Academico, Principal, Plan_curso)
             SELECT DISTINCT
                 COALESCE(TempAsignaturas.Asignatura_id, TempPrerequisitos.Asignatura_id) AS Sigla_curso,
                 0 AS Seccion_curso, -- seccion no considerada pues no se conocen periodos antiguos
@@ -154,7 +158,8 @@ class Corrector
                 null AS Nombre_Academico,
                 null AS Apellido1_Academico,
                 null AS Apellido2_Academico,
-                null AS Principal
+                null AS Principal,
+                TempAsignaturas.Plan AS Plan_curso
             FROM
                 TempPrerequisitos
             LEFT JOIN TempAsignaturas ON TempPrerequisitos.Asignatura_id = TempAsignaturas.Asignatura_id
@@ -166,6 +171,7 @@ class Corrector
     public function CorregirAcademicos()
     {
         // Insertar datos en la tabla Academicos
+        // agregar desde planeacion
         $query_academicos = "INSERT INTO Academicos (RUN, DV, Estamento, Grado_academico, Contrato, Jerarquia, Jornada)
             SELECT DISTINCT
                 TempPlaneacion.RUN AS RUN,
@@ -188,16 +194,24 @@ class Corrector
         ";
         $this->InsertarDatosFinales($query_academicos, 'Academicos');
 
-        #PARA TIRAR LOS ERRORES A LA TABLA CSV DE ERRORES
-        $result = pg_query($this->conn, $query_academicos);
-        if (!$result) {
-            // Obtener el mensaje de error
-            $error = pg_last_error($this->conn);
-
-            // Registrar el error con un registro de ejemplo o vacío
-            $registro_vacio = array_fill(0, 16, ''); // Ajusta el tamaño según las columnas
-            $this->registrarError('Academicos', $registro_vacio, "Error de inserción en Academicos: $error");
-        }
+        $query_academicos = "INSERT INTO Academicos (RUN, DV, Estamento, Grado_academico, Contrato, Jerarquia, Jornada)
+            SELECT DISTINCT
+                TempDocentesPlanificados.RUN AS RUN,
+                'X' AS DV,
+                'Académico' AS Estamento,
+                TempDocentesPlanificados.Grado_academico AS Grado_academico,
+                TempDocentesPlanificados.Contrato AS Contrato,
+                TempDocentesPlanificados.Jerarquia AS Jerarquia,
+                'X' AS Jornada
+            FROM
+                TempDocentesPlanificados
+            --Agregar desde docente planificados cuando Jerarquia contiene docente, 
+            -- por ej: ASISTENTE DOCENTE, PROFESOR ASOCIADO DOCENTE o que contenga Profesor 
+            WHERE TempDocentesPlanificados.Jerarquia ILIKE '%DOCENTE%'
+            OR TempDocentesPlanificados.Jerarquia ILIKE '%PROFESOR%'
+            ON CONFLICT (RUN, DV) DO NOTHING -- Evitar duplicados
+        ";
+        $this->InsertarDatosFinales($query_academicos, 'Academicos');
     }
 
     public function CorregirNotas()
@@ -288,7 +302,6 @@ class Corrector
                 TempAsignaturas.Asignatura_id AS Sigla_curso,
                 0 AS Seccion_curso,
                 'X' AS Periodo_curso,
-                -- Concatenar el plan con el prerrequisito
                 TempPrerequisitos.Prerequisitos AS Sigla_prerequisito,
                 TempAsignaturas.Ciclo AS Ciclo
             FROM

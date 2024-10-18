@@ -52,7 +52,8 @@ class Cargador
             Nombre_2 varchar(100),
             Apellido_1 varchar(100) NOT NULL,
             Apellido_2 varchar(100),
-            Correos varchar(100),
+            Correo_personal varchar(100),
+            Correo_institucional varchar(100),
             Telefonos varchar(100),
             PRIMARY KEY (RUN, DV)
         )";
@@ -110,7 +111,9 @@ class Cargador
             Apellido1_Academico varchar(100),
             Apellido2_Academico varchar(100),
             Principal varchar(1),
+            Plan_curso varchar(100), -- Plan de estudio al que pertenece el curso
             FOREIGN KEY (Nombre_Departamento, Codigo_Departamento) REFERENCES Departamento(Nombre, Codigo),
+            FOREIGN KEY (Plan_curso) REFERENCES Planes_Estudio(Codigo_Plan),
             PRIMARY KEY (Sigla_curso, Seccion_curso, Periodo_curso)
         )";
 
@@ -285,7 +288,7 @@ class Cargador
 
         // Insertar datos en las tablas finales
         // Insertar datos en la tabla Personas
-        $query = "INSERT INTO Personas (RUN, DV, Nombre_1, Nombre_2, Apellido_1, Apellido_2, Correos, Telefonos)
+        $query = "INSERT INTO Personas (RUN, DV, Nombre_1, Nombre_2, Apellido_1, Apellido_2, Correo_personal, Correo_institucional, Telefonos)
             SELECT DISTINCT
                 COALESCE(TempEstudiantes.RUN, TempDocentesPlanificados.RUN, TempNotas.RUN) AS RUN,
                 COALESCE(TempEstudiantes.DV, TempNotas.DV, 'X') AS DV,
@@ -293,7 +296,8 @@ class Cargador
                 TempEstudiantes.Nombre_2 AS Nombre_2,
                 COALESCE(TempEstudiantes.Primer_Apellido, TempDocentesPlanificados.Apellido_P, TempNotas.Apellido_Paterno, TempPlaneacion.Apellido_Docente_1) AS Apellido_1,
                 COALESCE(TempEstudiantes.Segundo_Apellido, TempNotas.Apellido_Materno, TempPlaneacion.Apellido_Docente_2) AS Apellido_2,
-                COALESCE(TempDocentesPlanificados.Email_personal, TempDocentesPlanificados.Email_institucional) AS Correos,
+                TempDocentesPlanificados.Email_personal AS Correo_personal,
+                TempDocentesPlanificados.Email_institucional AS Correo_institucional,
                 TempDocentesPlanificados.Telefono AS Telefonos
             FROM
                 TempEstudiantes
@@ -388,8 +392,25 @@ class Cargador
         ";
         $this->InsertarDatosFinales($query, 'Departamento');
 
+        // Insertar datos en la tabla Planes_Estudio
+        $query = "INSERT INTO Planes_Estudio (Codigo_Plan, Inicio_Vigencia, Jornada, Modalidad, Sede, Plan, Nombre_Facultad, Grado, Nombre_Carrera)
+            SELECT DISTINCT
+                TempPlanes.Codigo_Plan AS Codigo_Plan,
+                TempPlanes.Inicio_Vigencia AS Inicio_Vigencia,
+                TempPlanes.Jornada AS Jornada,
+                TempPlanes.Modalidad AS Modalidad,
+                TempPlanes.Sede AS Sede,
+                TempPlanes.Plan AS Plan,
+                TempPlanes.Facultad AS Nombre_Facultad,
+                TempPlanes.Grado AS Grado,
+                TempPlanes.Carrera AS Nombre_Carrera
+            FROM TempPlanes
+            ON CONFLICT (Codigo_Plan) DO NOTHING -- Evitar duplicados
+        ";
+        $this->InsertarDatosFinales($query, 'Planes_Estudio');
+
         // Insertar datos en la tabla Cursos
-        $query = "INSERT INTO Cursos (Sigla_curso, Seccion_curso, Periodo_curso, Nombre, Nivel, Ciclo, Tipo, Oportunidad, Duracion, Nombre_Departamento, Codigo_Departamento, RUN_Academico, DV_Academico, Nombre_Academico, Apellido1_Academico, Apellido2_Academico, Principal)
+        $query = "INSERT INTO Cursos (Sigla_curso, Seccion_curso, Periodo_curso, Nombre, Nivel, Ciclo, Tipo, Oportunidad, Duracion, Nombre_Departamento, Codigo_Departamento, RUN_Academico, DV_Academico, Nombre_Academico, Apellido1_Academico, Apellido2_Academico, Principal, Plan_curso)
             SELECT DISTINCT
                 TempAsignaturas.Asignatura_id AS Sigla_curso,
                 TempPlaneacion.Seccion AS Seccion_curso,
@@ -407,10 +428,12 @@ class Cargador
                 TempDocentesPlanificados.Nombre AS Nombre_Academico,
                 COALESCE(TempDocentesPlanificados.Apellido_P, TempPlaneacion.Apellido_Docente_1) AS Apellido1_Academico,
                 TempPlaneacion.Apellido_Docente_2 AS Apellido2_Academico,
-                TempPlaneacion.Profesor_Principal AS Principal
+                TempPlaneacion.Profesor_Principal AS Principal,
+                TempPlanes.Codigo_Plan AS Plan_curso
             FROM
                 TempAsignaturas
             JOIN TempPlaneacion ON TempAsignaturas.Asignatura_id = TempPlaneacion.Id_Asignatura
+            JOIN TempPlanes ON TempAsignaturas.Plan = TempPlanes.Codigo_Plan
             LEFT JOIN TempNotas ON TempAsignaturas.Asignatura_id = TempNotas.Codigo_Asignatura
             LEFT JOIN TempDocentesPlanificados ON TempPlaneacion.RUN = TempDocentesPlanificados.RUN
             LEFT JOIN TempEstudiantes ON TempDocentesPlanificados.RUN = TempEstudiantes.RUN       
@@ -474,23 +497,6 @@ class Cargador
             ON CONFLICT (Sigla_curso, Seccion_curso, Periodo_curso, Sigla_minimo) DO NOTHING -- Evitar duplicados
         ";
         $this->InsertarDatosFinales($query, 'Cursos_Minimos');
-
-        // Insertar datos en la tabla Planes_Estudio
-        $query = "INSERT INTO Planes_Estudio (Codigo_Plan, Inicio_Vigencia, Jornada, Modalidad, Sede, Plan, Nombre_Facultad, Grado, Nombre_Carrera)
-            SELECT DISTINCT
-                TempPlanes.Codigo_Plan AS Codigo_Plan,
-                TempPlanes.Inicio_Vigencia AS Inicio_Vigencia,
-                TempPlanes.Jornada AS Jornada,
-                TempPlanes.Modalidad AS Modalidad,
-                TempPlanes.Sede AS Sede,
-                TempPlanes.Plan AS Plan,
-                TempPlanes.Facultad AS Nombre_Facultad,
-                TempPlanes.Grado AS Grado,
-                TempPlanes.Carrera AS Nombre_Carrera
-            FROM TempPlanes
-            ON CONFLICT (Codigo_Plan) DO NOTHING -- Evitar duplicados
-        ";
-        $this->InsertarDatosFinales($query, 'Planes_Estudio');
 
         // Insertar datos en la tabla Programacion_Academica
         $query = "INSERT INTO Programacion_Academica (Sigla_curso, Seccion_curso, Periodo_Oferta, Cupos, Sala, Hora_Inicio, Hora_Fin, Fecha_Inicio, Fecha_Fin, Inscritos)
