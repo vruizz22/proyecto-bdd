@@ -8,13 +8,13 @@ $env_string = "host=localhost port=5432 dbname=postgres user=postgres password=E
 # Elefante$15
 // Llamada al módulo Cargador
 
-#$cargador = new Cargador($env_string);
-#echo "Cargando tablas...\n";
-#$cargador->CrearTablas();
-#echo "Tablas creadas\n";
-#echo "Cargando datos...\n";
-#$cargador->CargarDatos();
-#echo "Datos cargados\n";
+$cargador = new Cargador($env_string);
+echo "Cargando tablas...\n";
+$cargador->CrearTablas();
+echo "Tablas creadas\n";
+echo "Cargando datos...\n";
+$cargador->CargarDatos();
+echo "Datos cargados\n";
 
 // Llamada al módulo Corrector
 $corrector = new Corrector($env_string);

@@ -2,7 +2,8 @@
 class Cargador
 {
     public $conn;
-    public $tablas; # Array de tablas en formato de string 
+    public $tablas;
+    public $temp_tablas;
 
     public function __construct($env_string)
     {
@@ -15,21 +16,34 @@ class Cargador
                 pg_last_error());
         }
 
-        // Crear array de tablas en formato de string
         $this->tablas = array(
             "Personas",
             "Estudiantes",
             "Academicos",
             "Administrativos",
+            "Departamento",
+            "Planes_Estudio",
             "Cursos",
             "Cursos_Equivalencias",
             "Cursos_Prerequisitos",
             "Cursos_Minimos",
-            "Planes_Estudio",
             "Programacion_Academica",
-            "Departamento",
             "Nota",
             "Avance_Academico"
+        );
+
+        $this->temp_tablas = array(
+            "TempAsignaturas",
+            "TempPlaneacion",
+            "TempEstudiantes",
+            "TempNotas",
+            "TempDocentesPlanificados",
+            "TempPlanes",
+            "TempPrerequisitos",
+            "TempPlanesMagia",
+            "TempPlanesHechiceria",
+            "TempMallaHechiceria",
+            "TempMallaMagia"
         );
     }
 
@@ -39,211 +53,27 @@ class Cargador
         foreach ($this->tablas as $tabla) {
             $result = pg_query($this->conn, "DROP TABLE IF EXISTS {$tabla} CASCADE");
             if (!$result) {
-                die("Error en la eliminación de la tabla: " .
-                    pg_last_error());
+                die("Error en la eliminación de la tabla: " . pg_last_error());
             }
         }
 
-        // Creamos las tablas
-        $Personas = "CREATE TABLE Personas(
-            RUN varchar(100) NOT NULL,
-            DV varchar(2) NOT NULL,
-            Nombre_1 varchar(100) NOT NULL,
-            Nombre_2 varchar(100),
-            Apellido_1 varchar(100) NOT NULL,
-            Apellido_2 varchar(100),
-            Correo_personal varchar(100),
-            Correo_institucional varchar(100),
-            Telefonos varchar(100),
-            PRIMARY KEY (RUN, DV)
-        )";
+        // Leer y ejecutar el archivo schema.sql
+        $schemaFile = __DIR__ . DIRECTORY_SEPARATOR . 'sql' . DIRECTORY_SEPARATOR . 'schema.sql';
+        if (file_exists($schemaFile)) {
+            $schema = file_get_contents($schemaFile);
+            $queries = explode(";", $schema); // Dividir el contenido del archivo en consultas individuales
 
-        $Estudiantes = "CREATE TABLE Estudiantes(
-            RUN varchar(100) NOT NULL,
-            DV varchar(2) NOT NULL,
-            Causal_de_bloqueo TEXT,
-            Bloqueo varchar(1) NOT NULL,
-            Numero_de_estudiante int NOT NULL,
-            Cohorte varchar(100) NOT NULL,
-            Nombre_Carrera varchar(100) NOT NULL,
-            FOREIGN KEY (RUN, DV) REFERENCES Personas(RUN, DV),                                                         
-            PRIMARY KEY (RUN, DV, Numero_de_estudiante)
-        )";
-
-        $Academicos = "CREATE TABLE Academicos(
-            RUN varchar(100) NOT NULL,
-            DV varchar(2) NOT NULL,
-            Estamento varchar(100),
-            Grado_academico varchar(100),
-            Contrato varchar(100),
-            Jerarquia varchar(100),
-            Jornada varchar(100),
-            FOREIGN KEY (RUN, DV) REFERENCES Personas(RUN, DV),
-            PRIMARY KEY (RUN, DV)
-        )";
-
-        $Administrativos = "CREATE TABLE Administrativos(
-            RUN varchar(100) NOT NULL,
-            DV varchar(2) NOT NULL,
-            Estamento varchar(100),
-            Grado_academico varchar(100),
-            Contrato varchar(100),
-            Cargo varchar(100),
-            FOREIGN KEY (RUN, DV) REFERENCES Personas(RUN, DV),
-            PRIMARY KEY (RUN, DV)
-        )";
-
-        $Cursos = "CREATE TABLE Cursos(
-            Sigla_curso varchar(100) NOT NULL,
-            Seccion_curso int NOT NULL,
-            Periodo_curso varchar(100) NOT NULL,
-            Nombre varchar(100) NOT NULL,
-            Nivel varchar(100),
-            Ciclo varchar(100),
-            Tipo varchar(100),
-            Oportunidad varchar(3),
-            Duracion varchar(1) NOT NULL,
-            Nombre_Departamento varchar(100) NOT NULL,
-            Codigo_Departamento varchar(100) NOT NULL,
-            RUN_Academico varchar(100),
-            DV_Academico varchar(2),
-            Nombre_Academico varchar(100) DEFAULT 'POR DESIGNAR',
-            Apellido1_Academico varchar(100),
-            Apellido2_Academico varchar(100),
-            Principal varchar(1),
-            Plan_curso varchar(100), -- Plan de estudio al que pertenece el curso
-            FOREIGN KEY (Nombre_Departamento, Codigo_Departamento) REFERENCES Departamento(Nombre, Codigo),
-            FOREIGN KEY (Plan_curso) REFERENCES Planes_Estudio(Codigo_Plan),
-            PRIMARY KEY (Sigla_curso, Seccion_curso, Periodo_curso)
-        )";
-
-        $Cursos_Equivalencias = "CREATE TABLE Cursos_Equivalencias(
-            Sigla_curso varchar(100) NOT NULL,
-            Seccion_curso int NOT NULL,
-            Periodo_curso varchar(100) NOT NULL,
-            Sigla_equivalente varchar(100),
-            Ciclo varchar(100),
-            PRIMARY KEY (Sigla_curso, Seccion_curso, Periodo_curso, Sigla_equivalente),
-            FOREIGN KEY (Sigla_curso, Seccion_curso, Periodo_curso) REFERENCES Cursos(Sigla_curso, Seccion_curso, Periodo_curso)
-        )";
-
-        $Cursos_Prerequisitos = "CREATE TABLE Cursos_Prerequisitos(
-            Sigla_curso varchar(100) NOT NULL,
-            Seccion_curso int NOT NULL,
-            Periodo_curso varchar(100) NOT NULL,
-            Sigla_prerequisito varchar(100),
-            Ciclo varchar(100),
-            PRIMARY KEY (Sigla_curso, Seccion_curso, Periodo_curso, Sigla_prerequisito),
-            FOREIGN KEY (Sigla_curso, Seccion_curso, Periodo_curso) REFERENCES Cursos(Sigla_curso, Seccion_curso, Periodo_curso)
-        )";
-
-        $Cursos_Minimos = "CREATE TABLE Cursos_Minimos(
-            Sigla_curso varchar(100) NOT NULL,
-            Seccion_curso int NOT NULL,
-            Periodo_curso varchar(100) NOT NULL,
-            Sigla_minimo varchar(100),
-            Ciclo varchar(100),
-            Nombre varchar(100),
-            Tipo varchar(100),
-            Nivel varchar(100),
-            PRIMARY KEY (Sigla_curso, Seccion_curso, Periodo_curso, Sigla_minimo),
-            FOREIGN KEY (Sigla_curso, Seccion_curso, Periodo_curso) REFERENCES Cursos(Sigla_curso, Seccion_curso, Periodo_curso)
-        )";
-
-        $Planes_Estudio = "CREATE TABLE Planes_Estudio(
-            Codigo_Plan varchar(100) PRIMARY KEY UNIQUE NOT NULL,
-            Inicio_Vigencia DATE NOT NULL,
-            Jornada varchar(100) NOT NULL,
-            Modalidad varchar(100) NOT NULL,
-            Sede varchar(100) NOT NULL,
-            Plan varchar(100) NOT NULL,
-            Nombre_Facultad varchar(100) NOT NULL,
-            Grado varchar(100) NOT NULL,
-            Nombre_Carrera varchar(100) NOT NULL
-        )";
-
-        $Programacion_Academica = "CREATE TABLE Programacion_Academica(
-            Sigla_curso varchar(100) NOT NULL,
-            Seccion_curso int NOT NULL,
-            Periodo_Oferta varchar(100) NOT NULL,
-            Cupos int NOT NULL,
-            Sala varchar(100) NOT NULL,
-            Hora_Inicio TIME NOT NULL,
-            Hora_Fin TIME NOT NULL,
-            Fecha_Inicio DATE NOT NULL,
-            Fecha_Fin DATE NOT NULL,
-            Inscritos int NOT NULL,
-            PRIMARY KEY (Sigla_curso, Seccion_curso, Periodo_Oferta),
-            FOREIGN KEY (Sigla_curso, Seccion_curso, Periodo_Oferta) REFERENCES Cursos(Sigla_curso, Seccion_curso, Periodo_curso)
-        )";
-
-        $Departamento = "CREATE TABLE Departamento(
-            Nombre varchar(100) NOT NULL,
-            Codigo varchar(100) NOT NULL,
-            Nombre_Facultad varchar(100) NOT NULL,
-            PRIMARY KEY (Nombre, Codigo)
-        )";
-
-        $Nota = "CREATE TABLE Nota(
-            Sigla_curso varchar(100) NOT NULL,
-            Seccion_curso int NOT NULL,
-            Periodo_curso varchar(100) NOT NULL,
-            Numero_de_estudiante int NOT NULL,
-            RUN varchar(100) NOT NULL,
-            DV varchar(2) NOT NULL,
-            Nota float,
-            Descripcion varchar(100),
-            Resultado varchar(100),
-            Calificacion varchar(100),
-            PRIMARY KEY (Sigla_curso, Seccion_curso, Periodo_curso, RUN, DV, Numero_de_estudiante),
-            FOREIGN KEY (Sigla_curso, Seccion_curso, Periodo_curso) REFERENCES Cursos(Sigla_curso, Seccion_curso, Periodo_curso),
-            FOREIGN KEY (RUN, DV, Numero_de_estudiante) REFERENCES Estudiantes(RUN, DV, Numero_de_estudiante)
-        )";
-
-        $Avance_Academico = "CREATE TABLE Avance_Academico(
-            Sigla_curso varchar(100) NOT NULL,
-            Seccion_curso int NOT NULL,
-            Periodo_curso varchar(100) NOT NULL,
-            RUN varchar(100) NOT NULL,
-            DV varchar(2) NOT NULL,
-            Numero_de_estudiante int NOT NULL,
-            Periodo_Oferta varchar(100) NOT NULL,
-            Nota float,
-            Descripcion varchar(100),
-            Resultado varchar(100),
-            Calificacion varchar(100),
-            Ultima_Carga varchar(100),
-            Ultimo_Logro varchar(100),
-            Fecha_logro varchar(100),
-            PRIMARY KEY (Sigla_curso, Seccion_curso, Periodo_curso, RUN, DV, Numero_de_estudiante),
-            FOREIGN KEY (Sigla_curso, Seccion_curso, Periodo_curso) REFERENCES Cursos(Sigla_curso, Seccion_curso, Periodo_curso),
-            FOREIGN KEY (RUN, DV, Numero_de_estudiante) REFERENCES Estudiantes(RUN, DV, Numero_de_estudiante)
-        )";
-
-        // Guardamos todas las tablas en un array
-        $tablas = array(
-            $Personas,
-            $Planes_Estudio,
-            $Estudiantes,
-            $Academicos,
-            $Administrativos,
-            $Departamento,
-            $Cursos,
-            $Cursos_Equivalencias,
-            $Cursos_Prerequisitos,
-            $Cursos_Minimos,
-            $Programacion_Academica,
-            $Nota,
-            $Avance_Academico
-        );
-
-        // Ejecutamos la query para todas las tablas
-        foreach ($tablas as $tabla) {
-            $result = pg_query($this->conn, $tabla);
-            if (!$result) {
-                die("Error en la creación de la tabla: " .
-                    pg_last_error());
+            foreach ($this->tablas as $index => $tabla) {
+                $query = trim($queries[$index]);
+                if (!empty($query)) {
+                    $result = pg_query($this->conn, $query);
+                    if (!$result) {
+                        die("Error en la creación de la tabla '{$tabla}': " . pg_last_error());
+                    }
+                }
             }
+        } else {
+            die("El archivo schema.sql no existe.");
         }
 
         // Creamos todos los triggers
@@ -277,7 +107,6 @@ class Cargador
         }, $ruta_datos);
 
         // Combinar los nombres de los archivos con los datos leídos
-        # Diccionario que contiene los datos de los archivos asociados a su nombre
         $datos = array_combine($nombre_archivos, $datos_array);
 
         // Crear tablas temporales
@@ -286,289 +115,24 @@ class Cargador
         // Insertar datos en las tablas temporales
         $this->InsertarDatosTemporales($datos);
 
-        // Insertar datos en las tablas finales
-        // Insertar datos en la tabla Personas
-        $query = "INSERT INTO Personas (RUN, DV, Nombre_1, Nombre_2, Apellido_1, Apellido_2, Correo_personal, Correo_institucional, Telefonos)
-            SELECT DISTINCT
-                COALESCE(TempEstudiantes.RUN, TempDocentesPlanificados.RUN, TempNotas.RUN) AS RUN,
-                COALESCE(TempEstudiantes.DV, TempNotas.DV, 'X') AS DV,
-                COALESCE(TempEstudiantes.Nombre_1, TempDocentesPlanificados.Nombre, TempNotas.Nombres) AS Nombre_1,
-                TempEstudiantes.Nombre_2 AS Nombre_2,
-                COALESCE(TempEstudiantes.Primer_Apellido, TempDocentesPlanificados.Apellido_P, TempNotas.Apellido_Paterno, TempPlaneacion.Apellido_Docente_1) AS Apellido_1,
-                COALESCE(TempEstudiantes.Segundo_Apellido, TempNotas.Apellido_Materno, TempPlaneacion.Apellido_Docente_2) AS Apellido_2,
-                TempDocentesPlanificados.Email_personal AS Correo_personal,
-                TempDocentesPlanificados.Email_institucional AS Correo_institucional,
-                TempDocentesPlanificados.Telefono AS Telefonos
-            FROM
-                TempEstudiantes
-            FULL OUTER JOIN TempDocentesPlanificados -- Para casos donde Docente no sea estudiante
-                ON TempEstudiantes.RUN = TempDocentesPlanificados.RUN
-            LEFT JOIN TempNotas
-                ON TempEstudiantes.RUN = TempNotas.RUN
-            LEFT JOIN TempPlaneacion
-                ON TempDocentesPlanificados.RUN = TempPlaneacion.RUN
-            WHERE
-                COALESCE(TempEstudiantes.RUN, TempDocentesPlanificados.RUN, TempNotas.RUN) IS NOT NULL
-        ";
-        $this->InsertarDatosFinales($query, 'Personas');
+        // Leer y ejecutar inserts_schema.sql
+        $insertsSchemaFile = __DIR__ . DIRECTORY_SEPARATOR . 'sql' . DIRECTORY_SEPARATOR . 'inserts_schema.sql';
+        if (file_exists($insertsSchemaFile)) {
+            $insertsSchema = file_get_contents($insertsSchemaFile);
+            $queries = explode(";", $insertsSchema); // Dividir el contenido del archivo en consultas individuales
 
-        // Insertar datos en la tabla Estudiantes
-        $query = "INSERT INTO Estudiantes (RUN, DV, Causal_de_bloqueo, Bloqueo, Numero_de_estudiante, Cohorte, Nombre_Carrera)
-            SELECT DISTINCT
-                TempEstudiantes.RUN,
-                TempEstudiantes.DV,
-                TempEstudiantes.Causal_Bloqueo,
-                TempEstudiantes.Bloqueo,
-                TempEstudiantes.Numero_de_alumno,
-                TempEstudiantes.Cohorte,
-                TempEstudiantes.Carrera
-            FROM
-                TempEstudiantes
-            UNION ALL
-            SELECT DISTINCT
-                TempNotas.RUN,
-                TempNotas.DV,
-                'Sin Bloqueo' AS Causal_de_bloqueo, -- Valor por defecto
-                'X' AS Bloqueo, -- Valor por defecto
-                TempNotas.Numero_de_alumno,
-                TempNotas.Cohorte,
-                TempNotas.Plan AS Nombre_Carrera
-            FROM
-                TempNotas
-            ON CONFLICT (RUN, DV, Numero_de_estudiante) DO NOTHING -- Evitar duplicados
-        ";
-        $this->InsertarDatosFinales($query, 'Estudiantes');
-
-        // Insertar datos en la tabla Academicos
-        $query = "INSERT INTO Academicos (RUN, DV, Estamento, Grado_academico, Contrato, Jerarquia, Jornada)
-            SELECT DISTINCT
-                COALESCE(TempDocentesPlanificados.RUN, TempNotas.RUN, TempEstudiantes.RUN) AS RUN,
-                COALESCE(TempNotas.DV, TempEstudiantes.DV, 'X') AS DV,
-                TempDocentesPlanificados.Estamento AS Estamento,
-                TempDocentesPlanificados.Grado_academico AS Grado_academico,
-                TempDocentesPlanificados.Contrato AS Contrato,
-                TempDocentesPlanificados.Jerarquia AS Jerarquia,
-                COALESCE(TempDocentesPlanificados.Diurno, TempDocentesPlanificados.Vespertino) AS Jornada
-            FROM
-                TempDocentesPlanificados
-            LEFT JOIN TempNotas
-                ON TempDocentesPlanificados.RUN = TempNotas.RUN
-            LEFT JOIN TempEstudiantes
-                ON TempDocentesPlanificados.RUN = TempEstudiantes.RUN
-            WHERE TempDocentesPlanificados.Estamento = 'Académico'
-            AND COALESCE(TempDocentesPlanificados.RUN, TempNotas.RUN, TempEstudiantes.RUN) IS NOT NULL
-        ";
-        $this->InsertarDatosFinales($query, 'Academicos');
-
-        // Insertar datos en la tabla Administrativos
-        $query = "INSERT INTO Administrativos (RUN, DV, Estamento, Grado_academico, Contrato, Cargo)
-            SELECT DISTINCT
-                COALESCE(TempDocentesPlanificados.RUN, TempNotas.RUN, TempEstudiantes.RUN) AS RUN,
-                COALESCE(TempNotas.DV, TempEstudiantes.DV, 'X') AS DV,
-                TempDocentesPlanificados.Estamento AS Estamento,
-                TempDocentesPlanificados.Grado_academico AS Grado_academico,
-                TempDocentesPlanificados.Contrato AS Contrato,
-                TempDocentesPlanificados.Cargo AS Cargo
-            FROM
-                TempDocentesPlanificados
-            LEFT JOIN TempNotas
-                ON TempDocentesPlanificados.RUN = TempNotas.RUN
-            LEFT JOIN TempEstudiantes
-                ON TempDocentesPlanificados.RUN = TempEstudiantes.RUN
-            WHERE TempDocentesPlanificados.Estamento = 'Administrativo'
-            AND COALESCE(TempDocentesPlanificados.RUN, TempNotas.RUN, TempEstudiantes.RUN) IS NOT NULL
-            ON CONFLICT (RUN, DV) DO NOTHING -- Evitar duplicados
-        ";
-        $this->InsertarDatosFinales($query, 'Administrativos');
-
-        // Insertar datos en la tabla Departamento
-        $query = "INSERT INTO Departamento (Nombre, Codigo, Nombre_Facultad)
-            SELECT DISTINCT
-                TempPlaneacion.Departamento AS Nombre,
-                TempPlaneacion.Codigo_Depto AS Codigo,
-                TempPlaneacion.Facultad AS Nombre_Facultad
-            FROM TempPlaneacion
-            ON CONFLICT (Nombre, Codigo) DO NOTHING -- Evitar duplicados
-        ";
-        $this->InsertarDatosFinales($query, 'Departamento');
-
-        // Insertar datos en la tabla Planes_Estudio
-        $query = "INSERT INTO Planes_Estudio (Codigo_Plan, Inicio_Vigencia, Jornada, Modalidad, Sede, Plan, Nombre_Facultad, Grado, Nombre_Carrera)
-            SELECT DISTINCT
-                TempPlanes.Codigo_Plan AS Codigo_Plan,
-                TempPlanes.Inicio_Vigencia AS Inicio_Vigencia,
-                TempPlanes.Jornada AS Jornada,
-                TempPlanes.Modalidad AS Modalidad,
-                TempPlanes.Sede AS Sede,
-                TempPlanes.Plan AS Plan,
-                TempPlanes.Facultad AS Nombre_Facultad,
-                TempPlanes.Grado AS Grado,
-                TempPlanes.Carrera AS Nombre_Carrera
-            FROM TempPlanes
-            ON CONFLICT (Codigo_Plan) DO NOTHING -- Evitar duplicados
-        ";
-        $this->InsertarDatosFinales($query, 'Planes_Estudio');
-
-        // Insertar datos en la tabla Cursos
-        $query = "INSERT INTO Cursos (Sigla_curso, Seccion_curso, Periodo_curso, Nombre, Nivel, Ciclo, Tipo, Oportunidad, Duracion, Nombre_Departamento, Codigo_Departamento, RUN_Academico, DV_Academico, Nombre_Academico, Apellido1_Academico, Apellido2_Academico, Principal, Plan_curso)
-            SELECT DISTINCT
-                TempAsignaturas.Asignatura_id AS Sigla_curso,
-                TempPlaneacion.Seccion AS Seccion_curso,
-                TempPlaneacion.Periodo AS Periodo_curso,
-                TempAsignaturas.Asignatura AS Nombre,
-                TempAsignaturas.Nivel AS Nivel,
-                TempAsignaturas.Ciclo AS Ciclo,
-                'X' AS Tipo, -- Valor desconocido.
-                TempNotas.Convocatoria AS Oportunidad,
-                TempPlaneacion.Duracion AS Duracion,
-                TempPlaneacion.Departamento AS Nombre_Departamento,
-                TempPlaneacion.Codigo_Depto AS Codigo_Departamento,
-                TempDocentesPlanificados.RUN AS RUN_Academico,
-                COALESCE(TempEstudiantes.DV, TempNotas.DV, 'X') AS DV,
-                TempDocentesPlanificados.Nombre AS Nombre_Academico,
-                COALESCE(TempDocentesPlanificados.Apellido_P, TempPlaneacion.Apellido_Docente_1) AS Apellido1_Academico,
-                TempPlaneacion.Apellido_Docente_2 AS Apellido2_Academico,
-                TempPlaneacion.Profesor_Principal AS Principal,
-                TempPlanes.Codigo_Plan AS Plan_curso
-            FROM
-                TempAsignaturas
-            JOIN TempPlaneacion ON TempAsignaturas.Asignatura_id = TempPlaneacion.Id_Asignatura
-            JOIN TempPlanes ON TempAsignaturas.Plan = TempPlanes.Codigo_Plan
-            LEFT JOIN TempNotas ON TempAsignaturas.Asignatura_id = TempNotas.Codigo_Asignatura
-            LEFT JOIN TempDocentesPlanificados ON TempPlaneacion.RUN = TempDocentesPlanificados.RUN
-            LEFT JOIN TempEstudiantes ON TempDocentesPlanificados.RUN = TempEstudiantes.RUN       
-            ON CONFLICT (Sigla_curso, Seccion_curso, Periodo_curso) DO NOTHING -- Evitar duplicados 
-        ";
-        $this->InsertarDatosFinales($query, 'Cursos');
-
-        // Insertar datos en la tabla Cursos_Equivalencias
-        $query = "INSERT INTO Cursos_Equivalencias (Sigla_curso, Seccion_curso, Periodo_curso, Sigla_equivalente, Ciclo)
-            SELECT DISTINCT
-                -- Vamos a llamar 2 veces a la tabla TempAsignaturas, una para el curso y otra para el equivalente
-                A1.Asignatura_id AS Sigla_curso,
-                TempPlaneacion.Seccion AS Seccion_curso,
-                TempPlaneacion.Periodo AS Periodo_curso,
-                A2.Asignatura_id AS Sigla_equivalente,
-                A1.Ciclo AS Ciclo
-            FROM
-                TempAsignaturas A1
-            JOIN TempAsignaturas A2 
-                -- Extraemos el codigo de asignatura eliminando el plan
-                ON SUBSTRING(A1.Asignatura_id, LENGTH(A1.Plan) + 1) = SUBSTRING(A2.Asignatura_id, LENGTH(A2.Plan) + 1)
-                -- Nos aseguramos que los planes sean distintos
-                AND A1.Plan != A2.Plan
-            JOIN TempPlaneacion ON A1.Asignatura_id = TempPlaneacion.Id_Asignatura
-            ON CONFLICT (Sigla_curso, Seccion_curso, Periodo_curso, Sigla_equivalente) DO NOTHING -- Evitar duplicados
-        ";
-        $this->InsertarDatosFinales($query, 'Cursos_Equivalencias');
-
-        // Insertar datos en la tabla Cursos_Prerequisitos
-        $query = "INSERT INTO Cursos_Prerequisitos (Sigla_curso, Seccion_curso, Periodo_curso, Sigla_prerequisito, Ciclo)
-            SELECT DISTINCT
-                TempAsignaturas.Asignatura_id AS Sigla_curso,
-                TempPlaneacion.Seccion AS Seccion_curso,
-                TempPlaneacion.Periodo AS Periodo_curso,
-                TempPrerequisitos.Prerequisitos AS Sigla_prerequisito,
-                TempAsignaturas.Ciclo AS Ciclo
-            FROM
-                TempAsignaturas
-            JOIN TempPrerequisitos ON TempAsignaturas.Asignatura_id = TempPrerequisitos.Asignatura_id
-            JOIN TempPlaneacion ON TempAsignaturas.Asignatura_id = TempPlaneacion.Id_Asignatura
-            ON CONFLICT (Sigla_curso, Seccion_curso, Periodo_curso, Sigla_prerequisito) DO NOTHING -- Evitar duplicados
-        ";
-        $this->InsertarDatosFinales($query, 'Cursos_Prerequisitos');
-
-        // Insertar datos en la tabla Cursos_Minimos
-        $query = "INSERT INTO Cursos_Minimos (Sigla_curso, Seccion_curso, Periodo_curso, Sigla_minimo, Ciclo, Nombre, Tipo, Nivel)
-            SELECT DISTINCT
-            -- Todos los cursos que son Nivel = '1.0' son cursos mínimos
-                TempAsignaturas.Asignatura_id AS Sigla_curso,
-                TempPlaneacion.Seccion AS Seccion_curso,
-                TempPlaneacion.Periodo AS Periodo_curso,
-                TempAsignaturas.Asignatura_id AS Sigla_minimo,
-                TempAsignaturas.Ciclo AS Ciclo,
-                TempAsignaturas.Asignatura AS Nombre,
-                'Mínimo' AS Tipo,
-                TempAsignaturas.Nivel AS Nivel
-            FROM
-                TempAsignaturas
-            JOIN TempPlaneacion ON TempAsignaturas.Asignatura_id = TempPlaneacion.Id_Asignatura
-            WHERE TempAsignaturas.Nivel = '1.0'
-            ON CONFLICT (Sigla_curso, Seccion_curso, Periodo_curso, Sigla_minimo) DO NOTHING -- Evitar duplicados
-        ";
-        $this->InsertarDatosFinales($query, 'Cursos_Minimos');
-
-        // Insertar datos en la tabla Programacion_Academica
-        $query = "INSERT INTO Programacion_Academica (Sigla_curso, Seccion_curso, Periodo_Oferta, Cupos, Sala, Hora_Inicio, Hora_Fin, Fecha_Inicio, Fecha_Fin, Inscritos)
-            SELECT DISTINCT
-                TempAsignaturas.Asignatura_id AS Sigla_curso,
-                TempPlaneacion.Seccion AS Seccion_curso,
-                TempPlaneacion.Periodo AS Periodo_Oferta,
-                TempPlaneacion.Cupo AS Cupos,
-                TempPlaneacion.Lugar AS Sala,
-                TempPlaneacion.Hora_Inicio AS Hora_Inicio,
-                TempPlaneacion.Hora_Fin AS Hora_Fin,
-                TempPlaneacion.Fecha_Inicio AS Fecha_Inicio,
-                TempPlaneacion.Fecha_Fin AS Fecha_Fin,
-                TempPlaneacion.Inscritos AS Inscritos
-            FROM
-                TempPlaneacion
-            JOIN TempAsignaturas ON TempPlaneacion.Id_Asignatura = TempAsignaturas.Asignatura_id
-            ON CONFLICT (Sigla_curso, Seccion_curso, Periodo_Oferta) DO NOTHING -- Evitar duplicados
-        ";
-        $this->InsertarDatosFinales($query, 'Programacion_Academica');
-
-        // Insertar datos en la tabla Nota
-        $query = "INSERT INTO Nota (Sigla_curso, Seccion_curso, Periodo_curso, Numero_de_estudiante, RUN, DV, Nota, Descripcion, Resultado, Calificacion)
-            SELECT DISTINCT
-                TempAsignaturas.Asignatura_id AS Sigla_curso,
-                TempPlaneacion.Seccion AS Seccion_curso,
-                TempNotas.Periodo_Asignatura AS Periodo_curso,
-                TempNotas.Numero_de_alumno AS Numero_de_estudiante,
-                TempNotas.RUN AS RUN,
-                TempNotas.DV AS DV,
-                TempNotas.Nota AS Nota,
-                '' AS Descripcion, -- Valor a agregar con la función actualizar_nota
-                '' AS Resultado, -- Valor a agregar con la función actualizar_nota
-                TempNotas.Calificacion AS Calificacion
-            FROM
-                TempAsignaturas
-            JOIN TempPlaneacion ON TempAsignaturas.Asignatura_id = TempPlaneacion.Id_Asignatura 
-            JOIN TempNotas ON TempAsignaturas.Asignatura_id = TempNotas.Codigo_Asignatura
-            AND TempPlaneacion.Periodo = TempNotas.Periodo_Asignatura
-            ON CONFLICT (Sigla_curso, Seccion_curso, Periodo_curso, RUN, DV, Numero_de_estudiante) DO NOTHING -- Evitar duplicados
-        ";
-        $this->InsertarDatosFinales($query, 'Nota');
-
-        // Insertar datos en la tabla Avance_Academico
-        $query = "INSERT INTO Avance_Academico (Sigla_curso, Seccion_curso, Periodo_curso, RUN, DV, Numero_de_estudiante, Periodo_Oferta, Nota, Descripcion, Resultado, Calificacion, Ultima_Carga, Ultimo_Logro, Fecha_logro)
-            SELECT DISTINCT
-                TempAsignaturas.Asignatura_id AS Sigla_curso,
-                TempPlaneacion.Seccion AS Seccion_curso,
-                TempNotas.Periodo_Asignatura AS Periodo_curso,
-                TempNotas.RUN AS RUN,
-                TempNotas.DV AS DV,
-                TempNotas.Numero_de_alumno AS Numero_de_estudiante,
-                TempNotas.Periodo_Asignatura AS Periodo_Oferta,
-                TempNotas.Nota AS Nota,
-                '' AS Descripcion, -- Valor a agregar con la función actualizar_nota
-                '' AS Resultado, -- Valor a agregar con la función actualizar_nota
-                TempNotas.Calificacion AS Calificacion,
-                TempEstudiantes.Ultima_Carga AS Ultima_Carga,
-                TempEstudiantes.Logro AS Ultimo_Logro,
-                TempEstudiantes.Fecha_Logro AS Fecha_logro
-            FROM
-                TempAsignaturas
-            JOIN TempPlaneacion ON TempAsignaturas.Asignatura_id = TempPlaneacion.Id_Asignatura
-            JOIN TempNotas ON TempAsignaturas.Asignatura_id = TempNotas.Codigo_Asignatura
-            AND TempPlaneacion.Periodo = TempNotas.Periodo_Asignatura
-            LEFT JOIN TempEstudiantes ON TempNotas.RUN = TempEstudiantes.RUN
-            ON CONFLICT (Sigla_curso, Seccion_curso, Periodo_curso, RUN, DV, Numero_de_estudiante) DO NOTHING -- Evitar duplicados
-        ";
-        $this->InsertarDatosFinales($query, 'Avance_Academico');
-
-        // Eliminar las tablas temporales
-        $this->EliminarTablasTemporales();
+            foreach ($this->tablas as $index => $tabla) {
+                $query = trim($queries[$index]);
+                if (!empty($query)) {
+                    $result = pg_query($this->conn, $query);
+                    if (!$result) {
+                        die("Error en la inserción de datos en la tabla '{$tabla}': " . pg_last_error());
+                    }
+                }
+            }
+        } else {
+            die("El archivo inserts_schema.sql no existe.");
+        }
 
         // Cerrar la conexión
         pg_close($this->conn);
@@ -576,149 +140,23 @@ class Cargador
 
     private function CrearTablasTemporales()
     {
-        $queries = [
-            "CREATE TEMP TABLE TempAsignaturas (
-                Plan VARCHAR(100),
-                Asignatura_id VARCHAR(100),
-                Asignatura VARCHAR(100),
-                Nivel VARCHAR(100),
-                Ciclo VARCHAR(100)
-            )",
-            "CREATE TEMP TABLE TempPlaneacion (
-                Periodo VARCHAR(100),
-                Sede VARCHAR(100),
-                Facultad VARCHAR(100),
-                Codigo_Depto VARCHAR(100),
-                Departamento VARCHAR(100),
-                Id_Asignatura VARCHAR(100),
-                Asignatura VARCHAR(100),
-                Seccion INT,
-                Duracion VARCHAR(100),
-                Jornada VARCHAR(100),
-                Cupo INT,
-                Inscritos INT,
-                Dia VARCHAR(100),
-                Hora_Inicio TIME,
-                Hora_Fin TIME,
-                Fecha_Inicio DATE,
-                Fecha_Fin DATE,
-                Lugar VARCHAR(100),
-                Edificio VARCHAR(100),
-                Profesor_Principal VARCHAR(100),
-                RUN VARCHAR(100),
-                Nombre_Docente VARCHAR(100),
-                Apellido_Docente_1 VARCHAR(100),
-                Apellido_Docente_2 VARCHAR(100),
-                Jerarquizacion VARCHAR(100)
-            )",
-            "CREATE TEMP TABLE TempEstudiantes (
-                Codigo_Plan VARCHAR(100),
-                Carrera VARCHAR(100),
-                Cohorte VARCHAR(100),
-                Numero_de_alumno INT,
-                Bloqueo varchar(1),
-                Causal_Bloqueo TEXT,
-                RUN VARCHAR(100),
-                DV VARCHAR(2),
-                Nombre_1 VARCHAR(100),
-                Nombre_2 VARCHAR(100),
-                Primer_Apellido VARCHAR(100),
-                Segundo_Apellido VARCHAR(100),
-                Logro VARCHAR(100),
-                Fecha_Logro VARCHAR(100), -- Periodo (2024-2)
-                Ultima_Carga VARCHAR(100) -- Periodo (2024-2)
-            )",
-            "CREATE TEMP TABLE TempNotas (
-                Codigo_Plan VARCHAR(100),
-                Plan VARCHAR(100),
-                Cohorte VARCHAR(100),
-                Sede VARCHAR(100),
-                RUN VARCHAR(100),
-                DV VARCHAR(2),
-                Nombres VARCHAR(100),
-                Apellido_Paterno VARCHAR(100),
-                Apellido_Materno VARCHAR(100),
-                Numero_de_alumno INT,
-                Periodo_Asignatura VARCHAR(100),
-                Codigo_Asignatura VARCHAR(100),
-                Asignatura VARCHAR(100),
-                Convocatoria VARCHAR(100),
-                Calificacion VARCHAR(100),
-                Nota FLOAT
-            )",
-            "CREATE TEMP TABLE TempDocentesPlanificados (
-                RUN VARCHAR(100),
-                Nombre VARCHAR(100),
-                Apellido_P VARCHAR(100),
-                Telefono INT,
-                Email_personal VARCHAR(100),
-                Email_institucional VARCHAR(100),
-                Dedicacion VARCHAR(100),
-                Contrato VARCHAR(100),
-                Diurno varchar(100),
-                Vespertino varchar(100),
-                Sede VARCHAR(100),
-                Carrera VARCHAR(100),
-                Grado_academico VARCHAR(100),
-                Jerarquia VARCHAR(100),
-                Cargo VARCHAR(100),
-                Estamento VARCHAR(100)
-            )",
-            "CREATE TEMP TABLE TempPlanes (
-                Codigo_Plan VARCHAR(100),
-                Facultad VARCHAR(100),
-                Carrera VARCHAR(100),
-                Plan VARCHAR(100),
-                Jornada VARCHAR(100),
-                Sede VARCHAR(100),
-                Grado VARCHAR(100),
-                Modalidad VARCHAR(100),
-                Inicio_Vigencia DATE
-            )",
-            "CREATE TEMP TABLE TempPrerequisitos (
-                Plan VARCHAR(100),
-                Asignatura_id VARCHAR(100),
-                Asignatura VARCHAR(100),
-                Nivel VARCHAR(100),
-                Prerequisitos VARCHAR(100),
-                Prerequisitos_1 VARCHAR(100)
-            )",
-            "CREATE TEMP TABLE TempPlanesMagia (
-                Planes_Vigentes VARCHAR(100)
-            )",
-            "CREATE TEMP TABLE TempPlanesHechiceria (
-                Planes_Vigentes VARCHAR(100)
-            )",
-            "CREATE TEMP TABLE TempMallaMagia (
-                Col1 VARCHAR(100),
-                Col2 VARCHAR(100),
-                Col3 VARCHAR(100),
-                Col4 VARCHAR(100),
-                Col5 VARCHAR(100),
-                Col6 VARCHAR(100),
-                Col7 VARCHAR(100),
-                Col8 VARCHAR(100),
-                Col9 VARCHAR(100),
-                Col10 VARCHAR(100)
-            )",
-            "CREATE TEMP TABLE TempMallaHechiceria (
-                Col1 VARCHAR(100),
-                Col2 VARCHAR(100),
-                Col3 VARCHAR(100),
-                Col4 VARCHAR(100),
-                Col5 VARCHAR(100),
-                Col6 VARCHAR(100),
-                Col7 VARCHAR(100),
-                Col8 VARCHAR(100),
-                Col9 VARCHAR(100),
-                Col10 VARCHAR(100)
-            )"
-        ];
-        foreach ($queries as $query) {
-            $result = pg_query($this->conn, $query);
-            if (!$result) {
-                die("Error en la creación de la tabla temporal: " . pg_last_error());
+        // Leer y ejecutar el archivo temp_schema.sql
+        $tempSchemaFile = __DIR__ . DIRECTORY_SEPARATOR . 'sql' . DIRECTORY_SEPARATOR . 'temp_schema.sql';
+        if (file_exists($tempSchemaFile)) {
+            $tempSchema = file_get_contents($tempSchemaFile);
+            $queries = explode(";", $tempSchema); // Dividir el contenido del archivo en consultas individuales
+
+            foreach ($this->temp_tablas as $index => $tabla) {
+                $query = trim($queries[$index]);
+                if (!empty($query)) {
+                    $result = pg_query($this->conn, $query);
+                    if (!$result) {
+                        die("Error en la creación de la tabla temporal '{$tabla}': " . pg_last_error());
+                    }
+                }
             }
+        } else {
+            die("El archivo temp_schema.sql no existe.");
         }
     }
 
@@ -732,10 +170,7 @@ class Cargador
                 '{$asignatura[3]}',  -- Nivel
                 '{$asignatura[4]}'   -- Ciclo
             )";
-            $result = pg_query($this->conn, $query);
-            if (!$result) {
-                die("Error en la inserción de datos en la tabla temporal TempAsignaturas: " . pg_last_error());
-            }
+            $this->InsertarDatos($query, 'TempAsignaturas');
         }
 
         foreach ($datos['Planeacion'] as $planeacion) {
@@ -769,10 +204,7 @@ class Cargador
                 '{$planeacion[23]}',  -- Apellido_Docente_2
                 '{$planeacion[24]}'   -- Jerarquizacion
             )";
-            $result = pg_query($this->conn, $query);
-            if (!$result) {
-                die("Error en la inserción de datos en la tabla temporal TempPlaneacion: " . pg_last_error());
-            }
+            $this->InsertarDatos($query, 'TempPlaneacion');
         }
 
         foreach ($datos['Docentes_planificados'] as $docente) {
@@ -794,10 +226,7 @@ class Cargador
                 '{$docente[14]}',  -- Cargo
                 '{$docente[15]}'   -- Estamento
             )";
-            $result = pg_query($this->conn, $query);
-            if (!$result) {
-                die("Error en la inserción de datos en la tabla temporal TempDocentesPlanificados: " . pg_last_error());
-            }
+            $this->InsertarDatos($query, 'TempPlaneacion');
         }
 
         foreach ($datos['Estudiantes'] as $estudiante) {
@@ -822,10 +251,7 @@ class Cargador
                 '{$estudiante[13]}', -- Fecha_Logro
                 '{$estudiante[14]}'  -- Ultima_Carga
             )";
-            $result = pg_query($this->conn, $query);
-            if (!$result) {
-                die("Error en la inserción de datos en la tabla temporal TempEstudiantes: " . pg_last_error());
-            }
+            $this->InsertarDatos($query, 'TempPlaneacion');
         }
 
         foreach ($datos['Notas'] as $nota) {
@@ -850,10 +276,7 @@ class Cargador
                 '{$nota[14]}', -- Calificacion
                 " . (is_numeric($nota[15]) ? $nota[15] : "NULL") . " -- Nota
             )";
-            $result = pg_query($this->conn, $query);
-            if (!$result) {
-                die("Error en la inserción de datos en la tabla temporal TempNotas: " . pg_last_error());
-            }
+            $this->InsertarDatos($query, 'TempPlaneacion');
         }
 
         foreach ($datos['Planes'] as $plan) {
@@ -869,10 +292,7 @@ class Cargador
                 '{$plan[7]}',  -- Modalidad
                 '{$iniciovigencia}' -- Inicio_Vigencia
             )";
-            $result = pg_query($this->conn, $query);
-            if (!$result) {
-                die("Error en la inserción de datos en la tabla temporal TempPlanes: " . pg_last_error());
-            }
+            $this->InsertarDatos($query, 'TempPlaneacion');
         }
 
         foreach ($datos['Prerequisitos'] as $prerequisito) {
@@ -884,30 +304,21 @@ class Cargador
                 '{$prerequisito[4]}',  -- Prerequisitos
                 " . (is_numeric($prerequisito[5]) ? $prerequisito[5] : "NULL") . " -- Prerequisitos_1
             )";
-            $result = pg_query($this->conn, $query);
-            if (!$result) {
-                die("Error en la inserción de datos en la tabla temporal TempPrerequisitos: " . pg_last_error());
-            }
+            $this->InsertarDatos($query, 'TempPlaneacion');
         }
 
         foreach ($datos['Planes_Magia'] as $planMagia) {
             $query = "INSERT INTO TempPlanesMagia (Planes_Vigentes) VALUES (
                 '{$planMagia[0]}'  -- Planes_Vigentes
             )";
-            $result = pg_query($this->conn, $query);
-            if (!$result) {
-                die("Error en la inserción de datos en la tabla temporal TempPlanesMagia: " . pg_last_error());
-            }
+            $this->InsertarDatos($query, 'TempPlaneacion');
         }
 
         foreach ($datos['Planes_Hechiceria'] as $planHechiceria) {
             $query = "INSERT INTO TempPlanesHechiceria (Planes_Vigentes) VALUES (
                 '{$planHechiceria[0]}'  -- Planes_Vigentes
             )";
-            $result = pg_query($this->conn, $query);
-            if (!$result) {
-                die("Error en la inserción de datos en la tabla temporal TempPlanesHechiceria: " . pg_last_error());
-            }
+            $this->InsertarDatos($query, 'TempPlaneacion');
         }
 
         foreach ($datos['Malla_Magia'] as $mallaMagia) {
@@ -923,10 +334,7 @@ class Cargador
                 '{$mallaMagia[8]}',  -- Col9
                 '{$mallaMagia[9]}'   -- Col10
             )";
-            $result = pg_query($this->conn, $query);
-            if (!$result) {
-                die("Error en la inserción de datos en la tabla temporal TempMallaMagia: " . pg_last_error());
-            }
+            $this->InsertarDatos($query, 'TempPlaneacion');
         }
 
         foreach ($datos['Malla_Hechiceria'] as $mallaHechiceria) {
@@ -942,41 +350,15 @@ class Cargador
                 '{$mallaHechiceria[8]}',  -- Col9
                 '{$mallaHechiceria[9]}'   -- Col10
             )";
-            $result = pg_query($this->conn, $query);
-            if (!$result) {
-                die("Error en la inserción de datos en la tabla temporal TempMallaHechiceria: " . pg_last_error());
-            }
+            $this->InsertarDatos($query, 'TempPlaneacion');
         }
     }
 
-    private function InsertarDatosFinales($query, $nombre_tabla)
+    private function InsertarDatos($query, $nombre_tabla)
     {
         $result = pg_query($this->conn, $query);
         if (!$result) {
             die("Error en la inserción de datos en la tabla $nombre_tabla: " . pg_last_error());
-        }
-    }
-
-    private function EliminarTablasTemporales()
-    {
-        $queries = [
-            "DROP TABLE TempAsignaturas",
-            "DROP TABLE TempPlaneacion",
-            "DROP TABLE TempEstudiantes",
-            "DROP TABLE TempNotas",
-            "DROP TABLE TempDocentesPlanificados",
-            "DROP TABLE TempPlanes",
-            "DROP TABLE TempPrerequisitos",
-            "DROP TABLE TempPlanesMagia",
-            "DROP TABLE TempPlanesHechiceria",
-            "DROP TABLE TempMallaMagia",
-            "DROP TABLE TempMallaHechiceria"
-        ];
-        foreach ($queries as $query) {
-            $result = pg_query($this->conn, $query);
-            if (!$result) {
-                die("Error en la eliminación de la tabla temporal: " . pg_last_error());
-            }
         }
     }
 
