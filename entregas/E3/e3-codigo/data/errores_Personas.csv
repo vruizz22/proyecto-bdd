@@ -1,4 +1,0 @@
-0,Motivo
-,"Error en la inserción: ERROR:  no existe la columna «correos» en la relación «personas»
-LINE 1: ..., DV, Nombre_1, Nombre_2, Apellido_1, Apellido_2, Correos, T...
-                                                             ^"
