@@ -16,7 +16,7 @@ class Cargador
             die("Error de conexión: " . pg_last_error());
         }
 
-        $this->tablas = array("Profesores", "Jerarquia");
+        $this->tablas = array("profesores", "jerarquia");
     }
 
     public function CrearTablas()
@@ -149,6 +149,24 @@ class Cargador
                 die("Error al insertar datos en personas: " . pg_last_error($this->conn_grupo15e3));
             }
         }
+    }
+
+    public function TablasExistentes()
+    {
+        foreach ($this->tablas as $tabla) {
+            $query = "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = '{$tabla}')";
+            $result = pg_query($this->conn_grupo15e3, $query);
+
+            if (!$result) {
+                die("Error al verificar la existencia de la tabla '{$tabla}': " . pg_last_error($this->conn_grupo15e3));
+            }
+
+            $exists = pg_fetch_result($result, 0, 0);
+            if ($exists === 'f') {
+                return false;
+            }
+        }
+        return true;
     }
 
     public function cerrarConexiones()
