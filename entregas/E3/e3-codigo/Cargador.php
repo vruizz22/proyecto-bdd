@@ -186,7 +186,6 @@ class Cargador
                     if (!$result) {
                         die("Error en la creación de la tabla '{$tabla}': " . pg_last_error());
                     }
-                    echo "Tabla temporal {$tabla} creada\n";
                 }
             }
             echo "Tablas temporales creadas\n";
