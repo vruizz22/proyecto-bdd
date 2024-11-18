@@ -12,10 +12,10 @@ CREATE TEMP TABLE TempPlaneacion (
     Nombre_Docente VARCHAR(100)
 );
 
-CREATE TEMP TABLE TempNotas (
-    Nombres VARCHAR(100),
+CREATE TEMP TABLE TempEstudiantes (
     Numero_de_alumno INT,
-    Codigo_Asignatura VARCHAR(100)
+    Nombre_1 VARCHAR(100),
+    Nombre_2 VARCHAR(100)
 );
 
 -- El acta de notas contiene el n´umero de alumno, curso, periodo, nombre del estudiante, nombre del profesor, la ´unica nota final 

@@ -4,4 +4,3 @@ Error: ERROR:  la sintaxis de entrada no es válida para tipo numeric: «7;5»
 Error: ERROR:  la sintaxis de entrada no es válida para tipo numeric: «4;8»
 Error: ERROR:  la sintaxis de entrada no es válida para tipo numeric: «4;2;7»
 Error: ERROR:  la sintaxis de entrada no es válida para tipo numeric: «NP»
-Error: ERROR:  la sintaxis de entrada no es válida para tipo numeric: «P»

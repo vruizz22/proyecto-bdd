@@ -18,7 +18,7 @@ class Cargador
         }
 
         $this->tablas = array("profesores", "jerarquia");
-        $this->temptablas = array("TempNotasAdivinacion", "TempPlaneacion", "TempNotas", "Acta");
+        $this->temptablas = array("TempNotasAdivinacion", "TempPlaneacion", "TempEstudiantes", "Acta");
     }
 
     public function CrearTablas()
@@ -194,7 +194,7 @@ class Cargador
             die("El archivo tempschema.sql no existe.");
         }
 
-        $nombre_archivos = array('Notas_2024_02', 'notas_adivinacion_I', 'Planeacion');
+        $nombre_archivos = array('Estudiantes', 'notas_adivinacion_I', 'Planeacion');
 
         $ruta_base = __DIR__ . DIRECTORY_SEPARATOR . 'data';
         $ruta_datos = array_map(function ($nombre) use ($ruta_base) {
@@ -227,8 +227,8 @@ class Cargador
         echo "Insertando datos en las tablas temporales...\n";
         foreach ($datos['Planeacion'] as $planeacion) {
             $query = "INSERT INTO TempPlaneacion (Id_Asignatura, Nombre_Docente) VALUES (
-                '{$planeacion[5]}',  -- Id_Asignatura
-                '{$planeacion[21]}'  -- Nombre_Docente
+                        '{$planeacion[5]}',  -- Id_Asignatura
+                        '{$planeacion[21]}'  -- Nombre_Docente
             )";
             $result = pg_query($this->conn_grupo15e3, $query);
             if (!$result) {
@@ -236,15 +236,16 @@ class Cargador
             }
         }
 
-        foreach ($datos['Notas_2024_02'] as $nota) {
-            $query = "INSERT INTO TempNotas (Nombres, Numero_de_alumno, Codigo_Asignatura) VALUES (
-                '{$nota[6]}',  -- Nombres
-                '{$nota[9]}',  -- Numero_de_alumno
-                '{$nota[11]}'   -- Codigo_Asignatura
+        foreach ($datos['Estudiantes'] as $estudiante) {
+            $query = "INSERT INTO TempEstudiantes (Numero_de_alumno, Nombre_1, Nombre_2) VALUES (
+                        '{$estudiante[3]}',    -- Numero_de_alumno
+                        '{$estudiante[8]}',    -- Nombre_1
+                        '{$estudiante[9]}'     -- Nombre_2
+
             )";
             $result = pg_query($this->conn_grupo15e3, $query);
             if (!$result) {
-                die("Error en la inserción de datos en la tabla temporal TempNotas: " . pg_last_error());
+                die("Error en la inserción de datos en la tabla temporal TempEstudiantes: " . pg_last_error());
             }
         }
 
@@ -266,26 +267,32 @@ class Cargador
         // Iniciar la transacción
         pg_query($this->conn_grupo15e3, "BEGIN");
 
+        define('REPROBATORIO_MIN', 1);
+        define('REPROBATORIO_MAX', 3.99);
+        define('APROBATORIO_MIN', 4);
+        define('APROBATORIO_MAX', 7);
+
         $query = "INSERT INTO Acta (Numero_Alumno, Curso, Periodo, Nombre_Estudiante, Nombre_Profesor, Nota_Final)
             SELECT DISTINCT
             -- CAMBIAR NOTAS POR ESTUDIANTES
                 TempNotasAdivinacion.numero_alumno,
                 TempNotasAdivinacion.asignatura,
                 TempNotasAdivinacion.periodo,
-                TempNotas.Nombres,
+                CONCAT(TempEstudiantes.Nombre_1, ' ', TempEstudiantes.Nombre_2) AS Nombre_Estudiante,
                 TempPlaneacion.Nombre_Docente,
                 -- Si la oportunidad dic es P, la nota final es 0
-                -- si dic es mayor o igual a 4 o mar es vacio, la nota final es dic
-                -- la nota final es mar
+                -- si dic es aprobatoria o (mar es vacio y dic reporbatoria), la nota final es dic
+                -- la nota final es mar (rango completo) en otro caso
                 CASE
                     WHEN TempNotasAdivinacion.oportunidad_dic = 'P' THEN 0
-                    WHEN CAST(TempNotasAdivinacion.oportunidad_dic AS NUMERIC) >= 4 OR TRIM(TempNotasAdivinacion.oportunidad_mar) = '' THEN CAST(TempNotasAdivinacion.oportunidad_dic AS NUMERIC)
-                    ELSE CAST(TempNotasAdivinacion.oportunidad_mar AS NUMERIC)
+                    WHEN CAST(TempNotasAdivinacion.oportunidad_dic AS NUMERIC) BETWEEN " . APROBATORIO_MIN . " AND " . APROBATORIO_MAX . " THEN CAST(TempNotasAdivinacion.oportunidad_dic AS NUMERIC)
+                    WHEN TRIM(TempNotasAdivinacion.oportunidad_mar) = '' AND CAST(TempNotasAdivinacion.oportunidad_dic AS NUMERIC) BETWEEN " . REPROBATORIO_MIN . " AND " . REPROBATORIO_MAX . " THEN CAST(TempNotasAdivinacion.oportunidad_dic AS NUMERIC)
+                    WHEN CAST(TempNotasAdivinacion.oportunidad_mar AS NUMERIC) BETWEEN " . REPROBATORIO_MIN . " AND " . APROBATORIO_MAX . " THEN CAST(TempNotasAdivinacion.oportunidad_mar AS NUMERIC)
+                    ELSE 0
                 END AS Nota_Final
             FROM TempNotasAdivinacion
-            LEFT JOIN TempNotas ON TempNotasAdivinacion.numero_alumno = TempNotas.Numero_de_alumno
-            LEFT JOIN TempPlaneacion ON TempNotas.Codigo_Asignatura = TempPlaneacion.Id_Asignatura
-            AND TempNotasAdivinacion.asignatura = TempPlaneacion.Id_Asignatura";
+            LEFT JOIN TempEstudiantes ON TempNotasAdivinacion.numero_alumno = TempEstudiantes.Numero_de_alumno
+            LEFT JOIN TempPlaneacion ON TempNotasAdivinacion.asignatura = TempPlaneacion.Id_Asignatura";
 
         // Ejecutar la consulta
         $result = pg_query($this->conn_grupo15e3, $query);
@@ -293,10 +300,12 @@ class Cargador
         if ($result) {
 
             // ver tabla temporal acta
+            /*
             $query = "SELECT * FROM Acta";
             $result = pg_query($this->conn_grupo15e3, $query);
             $rows = pg_fetch_all($result);
             print_r($rows);
+            */
             // Confirmar la transacción
             pg_query($this->conn_grupo15e3, "COMMIT");
             echo "Transacción completada con éxito \n";
