@@ -309,13 +309,6 @@ class Cargador
                 // Revertir la transacción
                 pg_query($this->conn_grupo15e3, "ROLLBACK");
             }
-        } else {
-            // Registrar el error en el archivo de log
-            $error_message = "Error: " . pg_last_error($this->conn_grupo15e3) . "\n";
-            file_put_contents('error_log.txt', $error_message, FILE_APPEND);
-            echo "Error en la transacción: " . pg_last_error($this->conn_grupo15e3);
-            // Revertir la transacción
-            pg_query($this->conn_grupo15e3, "ROLLBACK");
         }
     }
 
