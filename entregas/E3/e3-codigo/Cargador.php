@@ -4,6 +4,7 @@ class Cargador
     public $conn_grupo15e3;
     public $conn_e3profesores;
     public $tablas;
+    public $temptablas;
 
     public function __construct($env_string_1, $env_string_2)
     {
@@ -17,6 +18,7 @@ class Cargador
         }
 
         $this->tablas = array("profesores", "jerarquia");
+        $this->temptablas = array("TempNotasAdivinacion", "TempPlaneacion", "TempNotas", "Acta");
     }
 
     public function CrearTablas()
@@ -169,9 +171,171 @@ class Cargador
         return true;
     }
 
+    public function CrearTablasTemporales()
+    {
+        // Leer y ejecutar el archivo tempschema.sql
+        $tempschemaFile = __DIR__ . DIRECTORY_SEPARATOR . 'sql' . DIRECTORY_SEPARATOR . 'tempschema.sql';
+        if (file_exists($tempschemaFile)) {
+            $schema = file_get_contents($tempschemaFile);
+            $queries = explode(";", $schema);
+
+            print_r($queries) . "\n";
+
+            foreach ($this->temptablas as $index => $tabla) {
+                $query = trim($queries[$index]);
+                if (!empty($query)) {
+                    $result = pg_query($this->conn_grupo15e3, $query);
+                    if (!$result) {
+                        die("Error en la creación de la tabla '{$tabla}': " . pg_last_error());
+                    }
+                    echo "Tabla temporal {$tabla} creada\n";
+                }
+            }
+            echo "Tablas temporales creadas\n";
+        } else {
+            die("El archivo tempschema.sql no existe.");
+        }
+
+        $nombre_archivos = array('Notas_2024_02', 'notas_adivinacion_I', 'Planeacion');
+
+        $ruta_base = __DIR__ . DIRECTORY_SEPARATOR . 'data';
+        $ruta_datos = array_map(function ($nombre) use ($ruta_base) {
+            return $ruta_base . DIRECTORY_SEPARATOR . $nombre . '.csv';
+        }, $nombre_archivos);
+
+        // Leer los datos de los csv
+        $datos_array = array_map(function ($ruta) {
+            return $this->LeerArchivo($ruta);
+        }, $ruta_datos);
+
+        // Combinar los nombres de los archivos con los datos leídos
+        # Diccionario que contiene los datos de los archivos asociados a su nombre
+        $datos = array_combine($nombre_archivos, $datos_array);
+
+        // Insertar datos en las tablas temporales
+        $this->InsertarDatosTemporales($datos);
+    }
+
+
     public function cerrarConexiones()
     {
         pg_close($this->conn_grupo15e3);
         pg_close($this->conn_e3profesores);
+    }
+
+
+    private function InsertarDatosTemporales($datos)
+    {
+        echo "Insertando datos en las tablas temporales...\n";
+        foreach ($datos['Planeacion'] as $planeacion) {
+            $query = "INSERT INTO TempPlaneacion (Id_Asignatura, Nombre_Docente) VALUES (
+                '{$planeacion[5]}',  -- Id_Asignatura
+                '{$planeacion[21]}'  -- Nombre_Docente
+            )";
+            $result = pg_query($this->conn_grupo15e3, $query);
+            if (!$result) {
+                die("Error en la inserción de datos en la tabla temporal TempPlaneacion: " . pg_last_error());
+            }
+        }
+
+        foreach ($datos['Notas_2024_02'] as $nota) {
+            $query = "INSERT INTO TempNotas (Nombres, Numero_de_alumno, Codigo_Asignatura) VALUES (
+                '{$nota[6]}',  -- Nombres
+                '{$nota[9]}',  -- Numero_de_alumno
+                '{$nota[11]}'   -- Codigo_Asignatura
+            )";
+            $result = pg_query($this->conn_grupo15e3, $query);
+            if (!$result) {
+                die("Error en la inserción de datos en la tabla temporal TempNotas: " . pg_last_error());
+            }
+        }
+
+        foreach ($datos['notas_adivinacion_I'] as $notas_adivinacion) {
+            $query = "INSERT INTO TempNotasAdivinacion (numero_alumno, asignatura, seccion, periodo, oportunidad_dic, oportunidad_mar) VALUES (
+                        '{$notas_adivinacion[0]}',  -- Numero_Alumno
+                        '{$notas_adivinacion[2]}',  -- ASIGNATURA
+                        '{$notas_adivinacion[3]}',  -- SECCION
+                        '{$notas_adivinacion[4]}',  -- PERIODO
+                        '{$notas_adivinacion[5]}',  -- OPORTUNIDAD DIC
+                        '{$notas_adivinacion[6]}'   -- OPORTUNIDAD MAR
+                    )";
+            $result = pg_query($this->conn_grupo15e3, $query);
+            if (!$result) {
+                die("Error en la inserción de datos en la tabla temporal Acta: " . pg_last_error());
+            }
+        }
+
+        // Iniciar la transacción
+        pg_query($this->conn_grupo15e3, "BEGIN");
+
+        $query = "INSERT INTO Acta (Numero_Alumno, Curso, Periodo, Nombre_Estudiante, Nombre_Profesor, Nota_Final)
+            SELECT DISTINCT
+                TempNotasAdivinacion.numero_alumno,
+                TempNotasAdivinacion.asignatura,
+                TempNotasAdivinacion.periodo,
+                TempNotas.Nombres,
+                TempPlaneacion.Nombre_Docente,
+                CASE
+                    WHEN CAST(TempNotasAdivinacion.oportunidad_dic AS numeric) > 4 OR TempNotasAdivinacion.oportunidad_mar IS NULL THEN CAST(TempNotasAdivinacion.oportunidad_dic AS numeric)
+                    ELSE CAST(TempNotasAdivinacion.oportunidad_mar AS numeric)
+                END AS Nota_Final
+            FROM TempNotasAdivinacion
+            LEFT JOIN TempNotas ON TempNotasAdivinacion.numero_alumno = TempNotas.Numero_de_alumno
+            LEFT JOIN TempPlaneacion ON TempNotas.Codigo_Asignatura = TempPlaneacion.Id_Asignatura
+            AND TempNotasAdivinacion.asignatura = TempPlaneacion.Id_Asignatura";
+
+        // Ejecutar la consulta
+        $result = pg_query($this->conn_grupo15e3, $query);
+
+        if ($result) {
+            // Validar que todas las notas sean numéricas
+            $notas_validas = true;
+            while ($row = pg_fetch_assoc($result)) {
+                if (!is_numeric($row['Nota_Final'])) {
+                    $notas_validas = false;
+                    break;
+                }
+            }
+
+            if ($notas_validas) {
+                // Confirmar la transacción
+                pg_query($this->conn_grupo15e3, "COMMIT");
+                echo "Transacción completada con éxito";
+            } else {
+                // Registrar el error en el archivo de log
+                $error_message = "Error: Nota_Final no es numérica\n";
+                file_put_contents('error_log.txt', $error_message, FILE_APPEND);
+                echo "Error en la transacción: Nota_Final no es numérica";
+                // Revertir la transacción
+                pg_query($this->conn_grupo15e3, "ROLLBACK");
+            }
+        } else {
+            // Registrar el error en el archivo de log
+            $error_message = "Error: " . pg_last_error($this->conn_grupo15e3) . "\n";
+            file_put_contents('error_log.txt', $error_message, FILE_APPEND);
+            echo "Error en la transacción: " . pg_last_error($this->conn_grupo15e3);
+            // Revertir la transacción
+            pg_query($this->conn_grupo15e3, "ROLLBACK");
+        }
+    }
+
+    private function LeerArchivo($archivo)
+    {
+        /* LeerArchivo recibe un archivo .csv
+        y realiza la lectura para retornalo como array */
+
+        // abrir con encodig utf-8
+        $file = fopen($archivo, 'r', 'UTF-8');
+        $array = [];
+        $primeralinea = true;
+        while (($linea = fgetcsv($file)) !== FALSE) {
+            if ($primeralinea) {
+                $primeralinea = false;
+                continue; // Ignorar la primera línea
+            }
+            $array[] = $linea;
+        }
+        fclose($file);
+        return $array;
     }
 }

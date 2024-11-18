@@ -9,22 +9,28 @@ $env_string_e3profesores = "host=localhost port=5432 dbname=e3profesores user=po
 // Llamada al módulo Cargador
 $cargador = new Cargador($env_string_grupo15e3, $env_string_e3profesores);
 
-// Si ya existen las tablas, el programa no continuará
-if ($cargador->TablasExistentes()) {
-    echo "Los datos de las tablas Profesores y Jeraquia ya fueron actualizados\n";
+// Si no existen las tablas, se crean y se cargan los datos
+if (!$cargador->TablasExistentes()) {
+    echo "Cargando tablas...\n";
+    $cargador->CrearTablas();
+    echo "Tablas creadas\n";
+    echo "Copiando tablas...\n";
+    $cargador->CopiarTablas();
+    echo "Tablas copiadas\n";
+    echo "Cargando datos...\n";
+    $cargador->CargarDatos();
+    echo "Datos cargados\n";
     echo "Proceso finalizado\n";
     $cargador->CerrarConexiones();
-    exit();
 }
 
-echo "Cargando tablas...\n";
-$cargador->CrearTablas();
-echo "Tablas creadas\n";
-echo "Copiando tablas...\n";
-$cargador->CopiarTablas();
-echo "Tablas copiadas\n";
-echo "Cargando datos...\n";
-$cargador->CargarDatos();
-echo "Datos cargados\n";
+echo "Las tablas de Profesores y Jerarquias ya existen
+los datos ya fueron cargados\n";
+
+echo "Creando tablas temporales...\n";
+$cargador->CrearTablasTemporales();
+
 echo "Proceso finalizado\n";
 $cargador->CerrarConexiones();
+
+// Crear la tabla temporal llamada "acta"

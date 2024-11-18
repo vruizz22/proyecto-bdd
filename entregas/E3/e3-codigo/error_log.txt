@@ -1,0 +1,1 @@
+Error: ERROR:  la sintaxis de entrada no es válida para tipo numeric: «7;4;2»
