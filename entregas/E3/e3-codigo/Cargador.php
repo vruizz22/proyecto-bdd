@@ -273,7 +273,6 @@ class Cargador
 
         $query = "INSERT INTO Acta (Numero_Alumno, Curso, Periodo, Nombre_Estudiante, Nombre_Profesor, Nota_Final)
             SELECT DISTINCT
-            -- CAMBIAR NOTAS POR ESTUDIANTES
                 TempNotasAdivinacion.numero_alumno,
                 TempNotasAdivinacion.asignatura,
                 TempNotasAdivinacion.periodo,
