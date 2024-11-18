@@ -1,6 +1,0 @@
-Error: ERROR:  la sintaxis de entrada no es válida para tipo numeric: «7;4;2»
-Error: ERROR:  la sintaxis de entrada no es válida para tipo numeric: «9;2;6»
-Error: ERROR:  la sintaxis de entrada no es válida para tipo numeric: «7;5»
-Error: ERROR:  la sintaxis de entrada no es válida para tipo numeric: «4;8»
-Error: ERROR:  la sintaxis de entrada no es válida para tipo numeric: «4;2;7»
-Error: ERROR:  la sintaxis de entrada no es válida para tipo numeric: «NP»
