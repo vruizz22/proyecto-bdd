@@ -297,26 +297,26 @@ class Cargador
         // Ejecutar la consulta
         $result = pg_query($this->conn_grupo15e3, $query);
 
-        if ($result) {
+        if (!$result) {
 
-            // ver tabla temporal acta
-            /*
-            $query = "SELECT * FROM Acta";
-            $result = pg_query($this->conn_grupo15e3, $query);
-            $rows = pg_fetch_all($result);
-            print_r($rows);
-            */
-            // Confirmar la transacción
-            pg_query($this->conn_grupo15e3, "COMMIT");
-            echo "Transacción completada con éxito \n";
-        } else {
             // Registrar el error en el archivo de log
             $error_message = "Error: " . pg_last_error($this->conn_grupo15e3) . "\n";
             file_put_contents('error_log.txt', $error_message, FILE_APPEND);
-            echo "Error en la transacción: " . pg_last_error($this->conn_grupo15e3);
+            echo "Error en la transacción: " . pg_last_error($this->conn_grupo15e3) . "\n";
             // Revertir la transacción
             pg_query($this->conn_grupo15e3, "ROLLBACK");
+            return;
         }
+        // ver tabla temporal acta
+        /*
+        $query = "SELECT * FROM Acta";
+        $result = pg_query($this->conn_grupo15e3, $query);
+        $rows = pg_fetch_all($result);
+        print_r($rows);
+        */
+        // Confirmar la transacción
+        pg_query($this->conn_grupo15e3, "COMMIT");
+        echo "Transacción completada con éxito \n";
     }
 
     private function LeerArchivo($archivo)
