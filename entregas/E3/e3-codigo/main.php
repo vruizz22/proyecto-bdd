@@ -24,8 +24,7 @@ if (!$cargador->TablasExistentes()) {
     $cargador->CerrarConexiones();
 }
 
-echo "Las tablas de Profesores y Jerarquias ya existen
-los datos ya fueron cargados\n";
+echo "Las tablas de Profesores y Jerarquias ya existen los datos ya fueron cargados\n";
 
 echo "Creando tablas temporales...\n";
 $cargador->CrearTablasTemporales();

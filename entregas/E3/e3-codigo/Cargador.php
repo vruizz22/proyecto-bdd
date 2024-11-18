@@ -179,8 +179,6 @@ class Cargador
             $schema = file_get_contents($tempschemaFile);
             $queries = explode(";", $schema);
 
-            print_r($queries) . "\n";
-
             foreach ($this->temptablas as $index => $tabla) {
                 $query = trim($queries[$index]);
                 if (!empty($query)) {
@@ -270,14 +268,19 @@ class Cargador
 
         $query = "INSERT INTO Acta (Numero_Alumno, Curso, Periodo, Nombre_Estudiante, Nombre_Profesor, Nota_Final)
             SELECT DISTINCT
+            -- CAMBIAR NOTAS POR ESTUDIANTES
                 TempNotasAdivinacion.numero_alumno,
                 TempNotasAdivinacion.asignatura,
                 TempNotasAdivinacion.periodo,
                 TempNotas.Nombres,
                 TempPlaneacion.Nombre_Docente,
+                -- Si la oportunidad dic es P, la nota final es 0
+                -- si dic es mayor o igual a 4 o mar es vacio, la nota final es dic
+                -- la nota final es mar
                 CASE
-                    WHEN CAST(TempNotasAdivinacion.oportunidad_dic AS numeric) > 4 OR TempNotasAdivinacion.oportunidad_mar IS NULL THEN CAST(TempNotasAdivinacion.oportunidad_dic AS numeric)
-                    ELSE CAST(TempNotasAdivinacion.oportunidad_mar AS numeric)
+                    WHEN TempNotasAdivinacion.oportunidad_dic = 'P' THEN 0
+                    WHEN CAST(TempNotasAdivinacion.oportunidad_dic AS NUMERIC) >= 4 OR TRIM(TempNotasAdivinacion.oportunidad_mar) = '' THEN CAST(TempNotasAdivinacion.oportunidad_dic AS NUMERIC)
+                    ELSE CAST(TempNotasAdivinacion.oportunidad_mar AS NUMERIC)
                 END AS Nota_Final
             FROM TempNotasAdivinacion
             LEFT JOIN TempNotas ON TempNotasAdivinacion.numero_alumno = TempNotas.Numero_de_alumno
@@ -288,20 +291,15 @@ class Cargador
         $result = pg_query($this->conn_grupo15e3, $query);
 
         if ($result) {
-            // Validar que todas las notas sean numéricas
-            $notas_validas = true;
-            while ($row = pg_fetch_assoc($result)) {
-                if (!is_numeric($row['Nota_Final'])) {
-                    $notas_validas = false;
-                    break;
-                }
-            }
 
-            if ($notas_validas) {
-                // Confirmar la transacción
-                pg_query($this->conn_grupo15e3, "COMMIT");
-                echo "Transacción completada con éxito";
-            }
+            // ver tabla temporal acta
+            $query = "SELECT * FROM Acta";
+            $result = pg_query($this->conn_grupo15e3, $query);
+            $rows = pg_fetch_all($result);
+            print_r($rows);
+            // Confirmar la transacción
+            pg_query($this->conn_grupo15e3, "COMMIT");
+            echo "Transacción completada con éxito \n";
         } else {
             // Registrar el error en el archivo de log
             $error_message = "Error: " . pg_last_error($this->conn_grupo15e3) . "\n";
