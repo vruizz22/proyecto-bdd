@@ -1,5 +1,6 @@
 CREATE TEMP TABLE TempNotasAdivinacion (
-    numero_alumno INTEGER,
+    numero_alumno INT,
+    RUN INT,
     asignatura VARCHAR(50),
     seccion INTEGER,
     periodo VARCHAR(20),
@@ -8,8 +9,10 @@ CREATE TEMP TABLE TempNotasAdivinacion (
 );
 
 CREATE TEMP TABLE TempPlaneacion (
+    Periodo VARCHAR(100),
     Id_Asignatura VARCHAR(100),
-    Nombre_Docente VARCHAR(100)
+    Seccion INT,
+    RUN VARCHAR(100)
 );
 
 CREATE TEMP TABLE TempEstudiantes (
@@ -21,8 +24,10 @@ CREATE TEMP TABLE TempEstudiantes (
 -- El acta de notas contiene el n´umero de alumno, curso, periodo, nombre del estudiante, nombre del profesor, la ´unica nota final 
 
 CREATE TEMP TABLE Acta (
-    Numero_Alumno INT,
+    Numero_Alumno INT PRIMARY KEY NOT NULL,
+    RUN INT NOT NULL,
     Curso VARCHAR(100),
+    seccion INT,
     Periodo VARCHAR(100),
     Nombre_Estudiante VARCHAR(100),
     Nombre_Profesor VARCHAR(100),

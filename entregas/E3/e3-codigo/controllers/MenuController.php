@@ -92,20 +92,53 @@ class MenuController
         }
     }
 
+    public function VerActa()
+    {
+        // Funcion para visualizar la funcion que muestra una View de la tabla temp ACTA
+        $db = new Database();
+        $cargador = new Cargador();
+        $cargador->CrearTablasTemporales();
+        $acta = $db->VerActa();
+        $db->close();
+        // incluir la vista y pasarle los resultados
+        include 'views/menu.php';
+    }
+
+    public function obtenerInterfaz()
+    {
+
+        // Obtener A T C, textos por input 
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['A']) && isset($_POST['T']) && isset($_POST['C'])) {
+            $A = $_POST['A'];
+            $T = $_POST['T'];
+            $C = $_POST['C'];
+
+            $db = new Database();
+            $interfaz = $db->Interfaz($A, $T, $C);
+            $db->close();
+
+            // incluir la vista y pasarle los resultados
+            include 'views/menu.php';
+        }
+    }
+
     public function specialMenu()
     {
         // llamar a registrarUsuario
         include 'views/special_menu.php';
     }
 
+    public function Interfaz()
+    {
+        include 'views/interfaz.php';
+    }
+
     public function registrarUsuario()
     {
-        echo "Registrando usuario...";
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email']) && isset($_POST['password'])) {
-            echo "Registrando usuario...";
             $correo = $_POST['email'];
             $clave = $_POST['password'];
-            echo "Correo: $correo, Clave: $clave";
 
             $db = new Database();
 
@@ -113,27 +146,25 @@ class MenuController
             $persona = $db->obtenerPersonaPorCorreo($correo);
 
             if ($persona) {
-                $rol = '';
-
                 // Verificar si es académico o administrativo
                 $esAcademico = $db->esAcademico($persona['run']);
                 $esAdministrativo = $db->esAdministrativo($persona['run']);
 
-                if ($esAcademico) {
-                    $rol = 'Academico/Administrativo';
-                } elseif ($esAdministrativo) {
-                    $rol = 'Administrativo';
-                }
+                $rol = $esAcademico ? 'Academico/Administrativo' : ($esAdministrativo ? 'Administrativo' : 'x');
 
-                if ($rol !== '') {
-                    // Guardar en el CSV (encriptar la clave antes de guardar)
-                    $this->guardarEnCSV($correo, $clave, $rol);
-                    echo "Usuario registrado correctamente.";
-                } else {
-                    echo "El correo no está asociado a un académico o administrativo.";
-                }
+                $this->guardarEnCSV($correo, $clave, $rol);
+
+                // Mostrar alerta y redirigir
+                echo "<script>
+                        alert('Usuario registrado correctamente.');
+                        window.location.href = '/grupo15e3/views/login.php';
+                      </script>";
             } else {
-                echo "El correo no está registrado en la base de datos.";
+                // Mostrar alerta de error
+                echo "<script>
+                        alert('El correo no está registrado en la base de datos.');
+                        window.location.href = '/grupo15e3/index.php?controller=MenuController&action=specialMenu';
+                      </script>";
             }
 
             $db->close();

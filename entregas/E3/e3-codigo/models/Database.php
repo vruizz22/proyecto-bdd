@@ -1,16 +1,18 @@
 <?php
-
 class Database
 {
     private $connection;
+    private $connection2;
 
     public function __construct()
     {
         // Conectar a PostgreSQL
-        $this->connection = pg_connect("host=localhost port=5432 dbname=grupo15 user=grupo15 password=Elefante$15");
+        $this->connection = pg_connect("host=localhost port=5432 dbname=grupo15e3 user=grupo15e3 password=Elefante$15");
+        $this->connection2 = pg_connect("host=localhost port=5432 dbname=e3profesores user=grupo15e3 password=Elefante$15");
 
-        if (!$this->connection) {
-            die("Error en la conexión con la base de datos: " . pg_last_error());
+        // Verificar conexiones
+        if (!$this->connection || !$this->connection2) {
+            die("Error de conexión: " . pg_last_error());
         }
     }
 
@@ -257,37 +259,152 @@ class Database
         return $historial;
     }
 
-    public function obtenerPersonaPorCorreo($correo) {
+    public function obtenerPersonaPorCorreo($correo)
+    {
         $correo = pg_escape_string($correo);
         $sql = "SELECT * FROM Personas WHERE Correo_institucional = '$correo'";
         $result = pg_query($this->connection, $sql);
-    
+
         if (!$result) {
             die("Error en la consulta: " . pg_last_error());
         }
-    
+
         return pg_fetch_assoc($result);
     }
-    
-    public function esAcademico($run) {
+
+    public function VerActa()
+    {
+        // llamar a la funcion que retorna una Query RETURN QUERY SELECT * FROM VerActa;
+        $query = "SELECT * FROM VerActa()";
+        $result = pg_query($this->connection, $query);
+        if (!$result) {
+            die("Error en la consulta: " . pg_last_error($this->connection));
+        }
+        $rows = pg_fetch_all($result);
+        return $rows;
+    }
+
+    public function Interfaz($A, $T, $C)
+    {
+        // Validar las tablas primero
+        if (!$this->validarTablas($T)) {
+            die("Error: Tablas no válidas.");
+        }
+
+        // Validar los atributos después de validar las tablas
+        if (!$this->validarAtributos($A, $T)) {
+            die("Error: Atributos no válidos.");
+        }
+
+        // Validar las condiciones al final
+        if (!$this->validarCondiciones($C)) {
+            die("Error: Condiciones no válidas.");
+        }
+
+        // Preparar la consulta
+        $sql = "SELECT $A FROM $T WHERE $C";
+        $result = pg_query($this->connection, $sql);
+        if (!$result) {
+            die("Error en la consulta: " . pg_last_error($this->connection));
+        }
+        $rows = pg_fetch_all($result);
+        return $rows;
+    }
+
+    // Método para validar los atributos
+    private function validarAtributos($A, $T)
+    {
+        $atributos = explode(',', $A);
+        $tablas = explode(',', $T);
+
+        foreach ($atributos as $atributo) {
+            $atributo = trim($atributo);
+            if ($atributo !== '*') {
+                $atributoValido = false;
+                foreach ($tablas as $tabla) {
+                    $tabla = trim($tabla);
+                    // Verificar que el atributo exista en la tabla especificada
+                    $result = pg_query($this->connection, "SELECT column_name FROM information_schema.columns WHERE table_name = '$tabla' AND column_name = '$atributo'");
+                    if (pg_num_rows($result) > 0) {
+                        $atributoValido = true;
+                        break;
+                    }
+                }
+                if (!$atributoValido) {
+                    echo "Error: Atributo '$atributo' no existe en las tablas especificadas.";
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    // Método para validar las tablas
+    private function validarTablas($T)
+    {
+        $tablas = explode(',', $T);
+        foreach ($tablas as $tabla) {
+            $tabla = trim($tabla);
+            if (empty($tabla)) {
+                return false;
+            }
+            $tabla = strtolower($tabla);
+            if (!preg_match('/^[a-z0-9_]+$/', $tabla)) {
+                return false;
+            }
+            // Verificar que la tabla exista en la base de datos
+            $result = pg_query($this->connection, "SELECT table_name FROM information_schema.tables WHERE table_name = '$tabla'");
+            if (pg_num_rows($result) == 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Método para validar las condiciones
+    private function validarCondiciones($C)
+    {
+        // Verificar que las condiciones no contengan caracteres no permitidos
+        if (!preg_match('/^[a-zA-Z0-9_=\s\'"<>!]+$/', $C)) {
+            return false;
+        }
+
+        // Dividir las condiciones en partes usando operadores lógicos como AND y OR
+        $condiciones = preg_split('/\s+(AND|OR)\s+/i', $C);
+
+        foreach ($condiciones as $condicion) {
+            // Verificar que cada condición tenga una estructura válida
+            if (!preg_match('/^[a-zA-Z0-9_]+\s*(=|<>|<|>|<=|>=|LIKE|IN)\s*[\w\'"]+$/', $condicion)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+
+    public function esAcademico($run)
+    {
         $run = pg_escape_string($run);
         $sql = "SELECT * FROM Academicos WHERE RUN = '$run'";
         $result = pg_query($this->connection, $sql);
-    
+
         return pg_num_rows($result) > 0;
     }
-    
-    public function esAdministrativo($run) {
+
+    public function esAdministrativo($run)
+    {
         $run = pg_escape_string($run);
         $sql = "SELECT * FROM Administrativos WHERE RUN = '$run'";
         $result = pg_query($this->connection, $sql);
-    
+
         return pg_num_rows($result) > 0;
     }
 
     public function close()
     {
         pg_close($this->connection);
+        pg_close($this->connection2);
     }
 
     private function sanitize($input)

@@ -1,13 +1,9 @@
 <?php
 ini_set('memory_limit', '10G'); // Aumentar el límite de memoria a 10GB
-require_once 'Cargador.php';
-
-// Cadena de conexión
-$env_string_grupo15e3 = "host=localhost port=5432 dbname=postgres user=postgres password=Elefante$15";
-$env_string_e3profesores = "host=localhost port=5432 dbname=e3profesores user=postgres password=Elefante$15";
+require_once 'models/Cargador.php';
 
 // Llamada al módulo Cargador
-$cargador = new Cargador($env_string_grupo15e3, $env_string_e3profesores);
+$cargador = new Cargador();
 
 // Si no existen las tablas, se crean y se cargan los datos
 if (!$cargador->TablasExistentes()) {
@@ -20,8 +16,6 @@ if (!$cargador->TablasExistentes()) {
     echo "Cargando datos...\n";
     $cargador->CargarDatos();
     echo "Datos cargados\n";
-    echo "Proceso finalizado\n";
-    $cargador->CerrarConexiones();
 }
 
 echo "Las tablas de Profesores y Jerarquias ya existen los datos ya fueron cargados\n";
@@ -29,7 +23,9 @@ echo "Las tablas de Profesores y Jerarquias ya existen los datos ya fueron carga
 echo "Creando tablas temporales...\n";
 $cargador->CrearTablasTemporales();
 
+echo "Insertando valores de Acta en Notas...\n";
+$cargador->InsertarNota();
+echo "Valores insertados\n";
+
 echo "Proceso finalizado\n";
 $cargador->CerrarConexiones();
-
-// Crear la tabla temporal llamada "acta"

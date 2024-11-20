@@ -18,7 +18,7 @@
     <?php endif; ?>
 
     <h2>Obtener Porcentaje de Aprobación</h2>
-    
+
     <form action="/grupo15/index.php?controller=MenuController&action=obtenerPorcentajeAprobacion" method="POST">
         <label for="periodo">Período:</label>
         <input type="text" id="periodo" name="periodo" required>
@@ -47,15 +47,15 @@
         </table>
     <?php endif; ?>
 
-    
+
     <h2>Obtener Promedio Porcentaje de Aprobación</h2>
-    
+
     <form action="/grupo15/index.php?controller=MenuController&action=obtenerPromedioPorcentajeAprobacion" method="POST">
         <label for="codigo_curso">Código de Curso:</label>
         <input type="text" id="codigo_curso" name="codigo_curso" required>
         <input type="submit" value="Obtener Promedio Porcentaje de Aprobación">
     </form>
-    
+
     <?php if (isset($promedioPorcentajeAprobacion) && is_array($promedioPorcentajeAprobacion) && count($promedioPorcentajeAprobacion) > 0): ?>
         <h2>Promedio del Porcentaje de Aprobación Histórico</h2>
         <table border="1">
@@ -77,13 +77,13 @@
     <?php endif; ?>
 
     <h2>Obtener Toma de Ramos 2025-01</h2>
-    
+
     <form action="/grupo15/index.php?controller=MenuController&action=obtenerTomaRamos" method="POST">
         <label for="numero_estudiante">Número de Estudiante:</label>
         <input type="number" id="numero_estudiante" name="numero_estudiante" required>
         <input type="submit" value="Obtener Toma de Ramos">
     </form>
-    
+
     <?php if (isset($tomaRamos) && is_array($tomaRamos) && count($tomaRamos) > 0): ?>
         <h2>Cursos Que Puedes Tomar en 2025-01</h2>
         <table border="1">
@@ -210,5 +210,43 @@
                     </tbody>
                 </table>
             <?php endif; ?>
+
+            <h2>Ver Acta</h2>
+            <form action="/grupo15/index.php?controller=MenuController&action=VerActa" method="POST">
+                <input type="submit" value="Ver Acta">
+            </form>
+
+            <?php if (isset($acta) && is_array($acta) && count($acta) > 0): ?>
+                <h2>Acta</h2>
+                <table border="1">
+                    <thead>
+                        <tr>
+                            <th>Numero Alumno</th>
+                            <th>Curso</th>
+                            <th>Periodo</th>
+                            <th>Nombre Estudiante</th>
+                            <th>Nombre Profesor</th>
+                            <th>Nota Final</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($acta as $fila): ?>
+                            <tr>
+                                <td><?php echo $fila['numero_alumno']; ?></td>
+                                <td><?php echo $fila['curso']; ?></td>
+                                <td><?php echo $fila['periodo']; ?></td>
+                                <td><?php echo $fila['nombre_estudiante']; ?></td>
+                                <td><?php echo $fila['nombre_profesor']; ?></td>
+                                <td><?php echo $fila['nota_final']; ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
+
+
+    
+
+</body>
 
 </html>

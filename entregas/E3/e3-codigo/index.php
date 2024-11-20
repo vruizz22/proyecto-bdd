@@ -4,6 +4,7 @@ require_once 'models/User.php';
 require_once 'models/Database.php';
 require_once 'controllers/AuthController.php';
 require_once 'controllers/MenuController.php';
+require_once 'models/Cargador.php';
 
 // Manejar la lógica de la redirección
 if (isset($_GET['controller']) && isset($_GET['action'])) {
@@ -28,17 +29,15 @@ if (isset($_GET['controller']) && isset($_GET['action'])) {
         // Verificar si es el usuario especial de Bananer
         if ($_SESSION['user_email'] === 'bananer@lamejor.com') {
             // Redirigir al menú especial
-            header("Location: /grupo15/index.php?controller=MenuController&action=specialMenu");
+            header("Location: /grupo15e3/index.php?controller=MenuController&action=specialMenu");
         } else {
             // Redirigir al menú regular
-            header("Location: /grupo15/index.php?controller=MenuController&action=menu");
+            header("Location: /grupo15e3/index.php?controller=MenuController&action=menu");
         }
         exit();
     } else {
         // Si no ha iniciado sesión, mostrar el formulario de login
-        header("Location: /grupo15/views/login.php");
+        header("Location: /grupo15e3/views/login.php");
         exit();
     }
 }
-?>
-
